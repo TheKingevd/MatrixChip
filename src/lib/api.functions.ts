@@ -264,6 +264,7 @@ const createOrderSchema = z.object({
     .max(160)
     .optional()
     .or(z.literal("")),
+  customer_password: z.string().min(8, "A senha precisa ter ao menos 8 caracteres").max(100).optional(),
   cep: z.string().trim().max(12).optional(),
   street: z.string().trim().max(160).optional(),
   number: z.string().trim().max(20).optional(),
@@ -336,8 +337,45 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     const { getSessionUser } = await import("@/server/auth");
     const { countries } = await import("@/data/countries");
 
-    const session = getSessionUser();
+    let session = getSessionUser();
     const isAdmin = session?.role === "admin";
+
+    if (!isAdmin) {
+      if (!data.customer_email) throw new Error("Informe seu e-mail para criar sua conta.");
+      if (!data.customer_password) throw new Error("Crie uma senha com pelo menos 8 caracteres.");
+
+      const { hashPassword, verifyPassword } = await import("@/server/db");
+      const existing = db
+        .prepare("SELECT id, password_hash, role FROM users WHERE LOWER(email) = LOWER(?)")
+        .get(data.customer_email) as
+        | { id: string; password_hash: string; role: string }
+        | undefined;
+
+      if (existing) {
+        if (existing.role !== "customer") {
+          throw new Error("Este e-mail já está sendo usado por uma conta administrativa.");
+        }
+        if (!verifyPassword(data.customer_password, existing.password_hash)) {
+          throw new Error("Este e-mail já possui uma conta. A senha informada está incorreta.");
+        }
+        session = { id: existing.id, email: data.customer_email, name: data.customer_name, role: "customer" };
+      } else {
+        const customerId = crypto.randomUUID();
+        db.prepare(
+          "INSERT INTO users (id, email, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, 'customer', ?)",
+        ).run(
+          customerId,
+          data.customer_email,
+          hashPassword(data.customer_password),
+          data.customer_name,
+          new Date().toISOString(),
+        );
+        session = { id: customerId, email: data.customer_email, name: data.customer_name, role: "customer" };
+      }
+
+      const { createSession } = await import("@/server/auth");
+      createSession(session.id);
+    }
 
     const country = countries.find((c) => c.code === data.country_code);
     if (!country) throw new Error("Chip indisponível para este país.");
@@ -467,14 +505,45 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       session?.id ?? null,
     );
 
-    return {
-      ok: true,
-      orderId,
-      total,
-      unitPrice,
-      discount,
-      customerName: data.customer_name,
-    };
+    try {
+      const { createPixCharge } = await import("@/server/payments");
+      const pixCharge = await createPixCharge({
+        orderId,
+        name: data.customer_name,
+        email: data.customer_email || "",
+        cpf: customerCpf,
+        phone: customerPhone,
+        total,
+      });
+
+      db.prepare(
+        `UPDATE sales
+         SET payment_provider = ?, payment_external_id = ?, qr_code = ?, qr_code_base64 = ?,
+             pix_payload = ?, pix_expires_at = ?, status = 'pendente', pix_status = 'aguardando'
+         WHERE id = ?`,
+      ).run(
+        pixCharge.provider,
+        pixCharge.externalId,
+        pixCharge.qrCode,
+        pixCharge.qrCodeBase64,
+        pixCharge.qrCode,
+        pixCharge.expiresAt || null,
+        orderId,
+      );
+
+      return {
+        ok: true,
+        orderId,
+        total,
+        unitPrice,
+        discount,
+        customerName: data.customer_name,
+        payment: pixCharge,
+      };
+    } catch (error) {
+      db.prepare("UPDATE sales SET status = 'erro_pagamento' WHERE id = ?").run(orderId);
+      throw error;
+    }
   });
 
 /**
@@ -483,6 +552,54 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
  * O ID aleatório (12 caracteres hex) é o segredo do link: sem ele não dá para
  * enumerar pedidos. Mesmo assim devolvemos só a projeção pública.
  */
+
+export const getCustomerOrdersServerFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireUser } = await import("@/server/auth");
+  const user = requireUser();
+  if (user.role !== "customer") throw new Error("Acesso restrito à conta do cliente.");
+
+  const { db } = await import("@/server/db");
+  return db.prepare(
+    \`SELECT id, created_at, country_code, country_name, dial, ddd, assigned_number,
+            customer_name, customer_phone, cep, street, number, complement, neighborhood,
+            city, state, number_type, delivery, quantity, unit_price, discount, total,
+            status, tracking_code, pix_status, pix_confirmed_at, payment_provider,
+            payment_external_id, pix_payload, pix_expires_at
+     FROM sales WHERE customer_id = ? ORDER BY created_at DESC LIMIT 100\`,
+  ).all(user.id);
+});
+
+export const refreshCustomerOrderPaymentServerFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ id: z.string().trim().min(4).max(60) }).parse(data))
+  .handler(async ({ data }) => {
+    const { requireUser } = await import("@/server/auth");
+    const user = requireUser();
+    if (user.role !== "customer") throw new Error("Acesso restrito à conta do cliente.");
+
+    const { db } = await import("@/server/db");
+    const order = db.prepare(
+      "SELECT id, payment_provider, payment_external_id, pix_status, status FROM sales WHERE id = ? AND customer_id = ?",
+    ).get(data.id) as
+      | { id: string; payment_provider: "asaas" | "mercadopago" | null; payment_external_id: string | null; pix_status: string; status: string }
+      | undefined;
+
+    if (!order) throw new Error("Pedido não encontrado.");
+    if (!order.payment_provider || !order.payment_external_id) {
+      return { ok: true, status: order.pix_status, paid: order.pix_status === "confirmado" };
+    }
+
+    const { getPixStatus } = await import("@/server/payments");
+    const result = await getPixStatus(order.payment_provider, order.payment_external_id);
+
+    if (result.paid) {
+      db.prepare(
+        "UPDATE sales SET pix_status = 'confirmado', pix_confirmed_at = COALESCE(pix_confirmed_at, ?), status = CASE WHEN status IN ('pendente','erro_pagamento') THEN 'pago' ELSE status END WHERE id = ?",
+      ).run(new Date().toISOString(), order.id);
+    }
+
+    return { ok: true, status: result.status, paid: result.paid };
+  });
+
 export const getOrderServerFn = createServerFn({ method: "GET" })
   .validator((data: unknown) => z.object({ id: z.string().trim().min(4).max(60) }).parse(data))
   .handler(async ({ data }) => {
