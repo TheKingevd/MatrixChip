@@ -140,7 +140,7 @@ export function Index() {
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
             <a
-              href="/conta"
+              href="/auth"
               className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline"
             >
               Minha conta
