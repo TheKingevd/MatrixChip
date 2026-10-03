@@ -27,9 +27,25 @@ export const Route = createFileRoute("/api/webhooks/asaas")({
 
         const payment = (await response.json()) as { status?: string };
         if (payment.status === "RECEIVED" || payment.status === "CONFIRMED") {
+          const sale = db.prepare(
+            "SELECT id, customer_name, total, pix_status FROM sales WHERE payment_provider = 'asaas' AND payment_external_id = ?",
+          ).get(paymentId) as
+            | { id: string; customer_name: string; total: number; pix_status: string }
+            | undefined;
+
           db.prepare(
             "UPDATE sales SET pix_status = 'confirmado', pix_confirmed_at = COALESCE(pix_confirmed_at, ?), status = CASE WHEN status IN ('pendente','erro_pagamento') THEN 'pago' ELSE status END WHERE payment_provider = 'asaas' AND payment_external_id = ?",
           ).run(new Date().toISOString(), paymentId);
+
+          if (sale && sale.pix_status !== "confirmado") {
+            const { sendAdminPush } = await import("@/server/push");
+            await sendAdminPush({
+              title: "Pagamento confirmado",
+              body: `Pedido ${sale.id} pago por ${sale.customer_name} — R$ ${Number(sale.total).toFixed(2).replace(".", ",")}.`,
+              url: "/admin/historico",
+              tag: `payment-confirmed-${sale.id}`,
+            }).catch((error) => console.error("[matrix] push de pagamento:", error));
+          }
         } else if (payment.status === "REFUNDED" || payment.status === "DELETED") {
           db.prepare(
             "UPDATE sales SET pix_status = 'aguardando', status = 'cancelada' WHERE payment_provider = 'asaas' AND payment_external_id = ?",
