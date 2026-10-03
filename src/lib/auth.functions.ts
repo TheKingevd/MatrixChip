@@ -5,7 +5,7 @@ export type SessionUser = {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "seller";
+  role: "admin" | "seller" | "customer";
 };
 
 const loginSchema = z.object({
