@@ -717,9 +717,20 @@ export const refreshCustomerOrderPaymentServerFn = createServerFn({ method: "POS
     const result = await getPixStatus(order.payment_provider, order.payment_external_id);
 
     if (result.paid) {
+      const wasConfirmed = order.pix_status === "confirmado";
       db.prepare(
         "UPDATE sales SET pix_status = 'confirmado', pix_confirmed_at = COALESCE(pix_confirmed_at, ?), status = CASE WHEN status IN ('pendente','erro_pagamento') THEN 'pago' ELSE status END WHERE id = ?",
       ).run(new Date().toISOString(), order.id);
+
+      if (!wasConfirmed) {
+        const { sendAdminPush } = await import("@/server/push");
+        await sendAdminPush({
+          title: "Pagamento confirmado",
+          body: `Pedido ${order.id} pago pelo cliente.`,
+          url: "/admin/historico",
+          tag: `payment-confirmed-${order.id}`,
+        }).catch((error) => console.error("[matrix] push de pagamento:", error));
+      }
     }
 
     return { ok: true, status: result.status, paid: result.paid };
