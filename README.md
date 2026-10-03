@@ -63,3 +63,26 @@ npm start            # node .output/server/index.mjs
 Variáveis de ambiente: veja `.env.example`. Se estiver atrás de um proxy reverso
 (nginx/Caddy/Cloudflare), defina `TRUST_PROXY=1` para que o limite de tentativas de
 login use o IP real do cliente.
+
+
+## PIX real — Asaas ou Mercado Pago
+
+O checkout usa o gateway definido no servidor e gera um QR Code PIX dinâmico por pedido.
+
+No `.env`:
+
+```env
+PAYMENT_PROVIDER=asaas
+
+# Sandbox Asaas
+ASAAS_API_URL=https://api-sandbox.asaas.com
+ASAAS_ACCESS_TOKEN=
+
+# Ou Mercado Pago
+MERCADOPAGO_ACCESS_TOKEN=
+```
+
+Para produção Asaas, troque `ASAAS_API_URL` para `https://api.asaas.com` e use a chave de produção correspondente. A chave nunca deve ir para o frontend ou para o GitHub. O Asaas usa `access_token` no backend; o Mercado Pago usa Access Token e `X-Idempotency-Key` para criação segura do pagamento. 
+
+O cliente informa os dados, cria/acessa a conta, o pedido é registrado e o gateway retorna o QR Code e o PIX Copia e Cola. A área `/conta` mostra os pedidos do cliente, pagamento, status do chip e código de rastreio.
+
