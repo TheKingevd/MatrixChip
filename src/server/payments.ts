@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { db } from "./db";
 
 export type PaymentProvider = "asaas" | "mercadopago";
 
@@ -14,7 +15,6 @@ export type PixCharge = {
 
 function getPaymentSettings() {
   try {
-    const { db } = require("./db") as typeof import("./db");
     const rows = db.prepare(
       "SELECT key, value FROM app_settings WHERE key IN ('payment_provider','asaas_access_token','asaas_api_url','mercadopago_access_token','public_app_url')",
     ).all() as { key: string; value: string }[];
