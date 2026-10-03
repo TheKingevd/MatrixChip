@@ -825,7 +825,6 @@ export const updateSaleStatusServerFn = createServerFn({ method: "POST" })
       }
 
       if (current.seller_id && data.status === "cancelada") {
-        const { sellerFinancials } = await import("@/lib/api.functions");
         // Não dependemos de valores enviados pelo navegador. Se o cancelamento
         // faria os repasses já pagos ultrapassarem a comissão disponível, bloqueamos.
         const financials = sellerFinancials(db, current.seller_id);
