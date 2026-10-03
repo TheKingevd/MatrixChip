@@ -38,7 +38,7 @@ export const loginServerFn = createServerFn({ method: "POST" })
           email: string;
           password_hash: string;
           name: string;
-          role: "admin" | "seller";
+          role: "admin" | "seller" | "customer";
         }
       | undefined;
 
