@@ -86,3 +86,24 @@ Para produção Asaas, troque `ASAAS_API_URL` para `https://api.asaas.com` e use
 
 O cliente informa os dados, cria/acessa a conta, o pedido é registrado e o gateway retorna o QR Code e o PIX Copia e Cola. A área `/conta` mostra os pedidos do cliente, pagamento, status do chip e código de rastreio.
 
+
+## PWA, sessão persistente e notificações
+
+O Matrix Online agora funciona como PWA:
+
+- Manifesto com modo `standalone`, ícones 192/512 e instalação na tela inicial.
+- No Android/Chrome, quando o navegador disponibilizar o instalador, o sistema mostra o botão **Instalar**.
+- No iPhone/iPad, use **Compartilhar → Adicionar à Tela de Início**. Depois de instalado, o app abre sem a barra normal do navegador.
+- A sessão administrativa usa cookie `httpOnly` persistente por 30 dias e é renovada enquanto o usuário continua usando o sistema.
+- O painel administrativo possui **Ativar notificações**. Depois de conceder a permissão, o navegador registra o dispositivo no servidor.
+- As notificações usam Web Push + Service Worker e podem chegar mesmo com o navegador/app fechado, nos navegadores e plataformas que suportam Web Push.
+- O servidor gera as chaves VAPID automaticamente na primeira ativação e as mantém no SQLite. `VAPID_SUBJECT` pode ser configurado no `.env` para identificar o servidor.
+
+Eventos que geram push para administradores:
+
+1. Novo pedido de chip.
+2. Pagamento confirmado pelo gateway.
+3. Novo cupom criado.
+4. Cupom resgatado em uma compra.
+
+> Para produção, o domínio precisa estar em HTTPS para instalação e notificações. No iPhone, o Web Push depende do PWA estar instalado na Tela de Início.
