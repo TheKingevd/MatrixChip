@@ -136,6 +136,10 @@ db.exec(`
   );
 `);
 
+// Configurações antigas de PIX manual não fazem mais parte do sistema.
+db.prepare("DELETE FROM app_settings WHERE key IN ('pix_key','pix_key_type','pix_holder','pix_bank','payment_link','pixto_link','public_app_url')").run();
+
+
 /**
  * SQLite não suporta "ADD COLUMN IF NOT EXISTS", então conferimos o schema
  * antes de alterar — mantém bancos já em uso funcionando após uma atualização.
