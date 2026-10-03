@@ -339,7 +339,7 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="email" className="text-xs">
-                    E-mail (opcional)
+                    E-mail
                   </Label>
                   <Input
                     id="email"
