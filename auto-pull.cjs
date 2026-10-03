@@ -103,6 +103,27 @@ async function verificarGitHub() {
             console.log("✅ Pull realizado com sucesso!");
             console.log(pull.stdout);
 
+            // Se uma atualização alterou dependências, sincroniza o node_modules
+            // antes de reiniciar o Vite. Assim o Auto Pull também funciona
+            // quando uma feature nova adiciona um pacote npm.
+            try {
+                const arquivosAlterados = await executar("git diff --name-only ORIG_HEAD HEAD");
+                const precisaInstalarDependencias =
+                    /(^|\\n)(package\\.json|package-lock\\.json)(\\n|$)/.test(
+                        arquivosAlterados.stdout
+                    );
+
+                if (precisaInstalarDependencias) {
+                    console.log("📦 Dependências alteradas. Executando npm install...");
+                    const install = await executar("npm install --no-audit --no-fund");
+                    console.log(install.stdout);
+                }
+            } catch (erroDependencias) {
+                console.error("❌ Falha ao instalar dependências:");
+                console.error(erroDependencias.stderr || erroDependencias.error?.message || erroDependencias);
+                return;
+            }
+
             reiniciarServidor();
         }
     } catch (erro) {
