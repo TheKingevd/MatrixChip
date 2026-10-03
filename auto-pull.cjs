@@ -28,8 +28,29 @@ function executar(comando) {
     });
 }
 
-function iniciarServidor() {
+async function garantirDependencias() {
+    try {
+        const resultado = await executar("if exist package.json npm install --no-audit --no-fund");
+        if (resultado.stdout.trim()) console.log(resultado.stdout);
+        if (resultado.stderr.trim()) console.log(resultado.stderr);
+        return true;
+    } catch (erro) {
+        console.error("❌ Não foi possível instalar/atualizar as dependências.");
+        if (erro.stderr) console.error(erro.stderr);
+        else if (erro.error) console.error(erro.error.message);
+        return false;
+    }
+}
+
+async function iniciarServidor() {
     if (serverProcess) return;
+
+    const dependenciasOk = await garantirDependencias();
+    if (!dependenciasOk) {
+        console.log("⏳ Tentando novamente em 5 segundos...");
+        setTimeout(() => void iniciarServidor(), 5000);
+        return;
+    }
 
     console.log("🚀 Iniciando servidor da aplicação...");
 
