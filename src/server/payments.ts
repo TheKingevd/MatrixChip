@@ -16,7 +16,7 @@ export type PixCharge = {
 function getPaymentSettings() {
   try {
     const rows = db.prepare(
-      "SELECT key, value FROM app_settings WHERE key IN ('payment_provider','asaas_access_token','asaas_api_url','mercadopago_access_token','public_app_url')",
+      "SELECT key, value FROM app_settings WHERE key IN ('payment_provider','asaas_access_token','asaas_api_url','mercadopago_access_token')",
     ).all() as { key: string; value: string }[];
     return Object.fromEntries(rows.map((row) => [row.key, row.value])) as Record<string, string>;
   } catch {
@@ -79,7 +79,7 @@ async function createAsaasCharge(input: {
   total: number;
 }): Promise<PixCharge> {
   const token = settingOrEnv("asaas_access_token", "ASAAS_ACCESS_TOKEN");
-  if (!token) throw new Error("ASAAS_ACCESS_TOKEN não configurado no .env.");
+  if (!token) throw new Error("Token do Asaas não configurado.");
 
   const base = (settingOrEnv("asaas_api_url", "ASAAS_API_URL") || "https://api.asaas.com").replace(/\/$/, "");
   const headers = {
@@ -155,7 +155,7 @@ async function createMercadoPagoCharge(input: {
   total: number;
 }): Promise<PixCharge> {
   const token = settingOrEnv("mercadopago_access_token", "MERCADOPAGO_ACCESS_TOKEN");
-  if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado no .env.");
+  if (!token) throw new Error("Token do Mercado Pago não configurado.");
 
   const { firstName, lastName } = splitName(input.name);
   const idempotencyKey = crypto.randomUUID();
