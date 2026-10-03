@@ -118,6 +118,10 @@ db.exec(`
     mp_payment_id TEXT,
     qr_code TEXT,
     qr_code_base64 TEXT,
+    payment_provider TEXT,
+    payment_external_id TEXT,
+    pix_payload TEXT,
+    pix_expires_at TEXT,
     FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE SET NULL
   );
 
@@ -144,6 +148,10 @@ function addColumnIfMissing(table: string, column: string, definition: string) {
 
 // Vínculo do pedido com a conta do cliente (usado pelo painel do cliente).
 addColumnIfMissing("sales", "customer_id", "TEXT");
+addColumnIfMissing("sales", "payment_provider", "TEXT");
+addColumnIfMissing("sales", "payment_external_id", "TEXT");
+addColumnIfMissing("sales", "pix_payload", "TEXT");
+addColumnIfMissing("sales", "pix_expires_at", "TEXT");
 
 // Funções utilitárias de hash de senha
 export function hashPassword(password: string): string {
