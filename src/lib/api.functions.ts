@@ -598,6 +598,20 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       session?.id ?? null,
     );
 
+    // Venda feita pelo PDV/admin não cria cobrança automática.
+    // Somente o checkout público do cliente cria uma cobrança no gateway.
+    if (isAdmin) {
+      return {
+        ok: true,
+        orderId,
+        total,
+        unitPrice,
+        discount,
+        customerName: data.customer_name,
+        payment: null,
+      };
+    }
+
     try {
       const { createPixCharge } = await import("@/server/payments");
       const pixCharge = await createPixCharge({
@@ -624,36 +638,34 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         orderId,
       );
 
-      if (!isAdmin) {
-        const { sendAdminPush } = await import("@/server/push");
+      const { sendAdminPush } = await import("@/server/push");
+      await sendAdminPush({
+        title: "Novo pedido de chip",
+        body: `${data.customer_name} fez o pedido ${orderId} no valor de R$ ${total.toFixed(2).replace(".", ",")}.`,
+        url: "/admin/historico",
+        tag: `sale-created-${orderId}`,
+      }).catch((error) => console.error("[matrix] push de novo pedido:", error));
+
+      if (couponCode) {
+        db.prepare(
+          `INSERT INTO coupon_redemptions
+           (id, coupon_code, sale_id, customer_name, customer_email, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        ).run(
+          crypto.randomUUID(),
+          couponCode,
+          orderId,
+          data.customer_name,
+          data.customer_email || null,
+          now,
+        );
+
         await sendAdminPush({
-          title: "Novo pedido de chip",
-          body: `${data.customer_name} fez o pedido ${orderId} no valor de R$ ${total.toFixed(2).replace(".", ",")}.`,
-          url: "/admin/historico",
-          tag: `sale-created-${orderId}`,
-        }).catch((error) => console.error("[matrix] push de novo pedido:", error));
-
-        if (couponCode) {
-          db.prepare(
-            `INSERT INTO coupon_redemptions
-             (id, coupon_code, sale_id, customer_name, customer_email, created_at)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-          ).run(
-            crypto.randomUUID(),
-            couponCode,
-            orderId,
-            data.customer_name,
-            data.customer_email || null,
-            now,
-          );
-
-          await sendAdminPush({
-            title: "Cupom resgatado",
-            body: `${data.customer_name} resgatou o cupom ${couponCode} no pedido ${orderId}.`,
-            url: "/admin/cupons",
-            tag: `coupon-redeemed-${orderId}`,
-          }).catch((error) => console.error("[matrix] push de cupom resgatado:", error));
-        }
+          title: "Cupom resgatado",
+          body: `${data.customer_name} resgatou o cupom ${couponCode} no pedido ${orderId}.`,
+          url: "/admin/cupons",
+          tag: `coupon-redeemed-${orderId}`,
+        }).catch((error) => console.error("[matrix] push de cupom resgatado:", error));
       }
 
       return {
