@@ -31,7 +31,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (session) void navigate({ to: "/admin" });
+    if (session) void navigate({ to: session.user.role === "customer" ? "/conta" : "/admin" });
   }, [session, navigate]);
 
   const submit = async (e: React.FormEvent) => {
@@ -48,7 +48,7 @@ function AuthPage() {
       });
 
       setAuthData(result.user);
-      void navigate({ to: "/admin" });
+      void navigate({ to: result.user.role === "customer" ? "/conta" : "/admin" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "E-mail ou senha inválidos.");
     } finally {
