@@ -6,16 +6,72 @@ import crypto from "node:crypto";
 // CONFIGURAÇÕES (leitura pública, escrita só admin)
 // ==========================================
 
-export const getSettingsServerFn = createServerFn({ method: "GET" }).handler(async () => {
+const PRIVATE_SETTING_KEYS = new Set([
+  "payment_provider",
+  "asaas_access_token",
+  "asaas_api_url",
+  "asaas_webhook_token",
+  "mercadopago_access_token",
+  "mercadopago_webhook_secret",
+  "public_app_url",
+]);
+
+async function readSettings(includePrivate = false) {
   const { db } = await import("@/server/db");
   const rows = db.prepare("SELECT key, value FROM app_settings").all() as {
     key: string;
     value: string;
   }[];
   const map: Record<string, string> = {};
-  for (const r of rows) map[r.key] = r.value;
+  for (const row of rows) {
+    if (!includePrivate && PRIVATE_SETTING_KEYS.has(row.key)) continue;
+    map[row.key] = row.value;
+  }
   return map;
+}
+
+export const getSettingsServerFn = createServerFn({ method: "GET" }).handler(async () => {
+  return readSettings(false);
 });
+
+export const getAdminSettingsServerFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/server/auth");
+  requireAdmin();
+  return readSettings(true);
+});
+
+export const testPaymentGatewayServerFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) =>
+    z.object({ provider: z.enum(["asaas", "mercadopago"]) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/server/auth");
+    requireAdmin();
+
+    const settings = await readSettings(true);
+    const selected = data.provider;
+    const token =
+      selected === "asaas"
+        ? settings["asaas_access_token"]?.trim()
+        : settings["mercadopago_access_token"]?.trim();
+
+    if (!token) throw new Error(`Token do ${selected === "asaas" ? "Asaas" : "Mercado Pago"} não configurado.`);
+
+    if (selected === "asaas") {
+      const base = (settings["asaas_api_url"] || "https://api.asaas.com").replace(/\/$/, "");
+      const response = await fetch(`${base}/v3/myAccount`, {
+        headers: { accept: "application/json", access_token: token },
+      });
+      if (!response.ok) throw new Error(`Asaas recusou o token (HTTP ${response.status}).`);
+    } else {
+      const response = await fetch("https://api.mercadopago.com/v1/users/me", {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`Mercado Pago recusou o token (HTTP ${response.status}).`);
+    }
+
+    return { ok: true };
+  });
 
 export const updateSettingsServerFn = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
