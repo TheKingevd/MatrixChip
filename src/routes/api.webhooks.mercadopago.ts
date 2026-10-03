@@ -16,7 +16,9 @@ export const Route = createFileRoute("/api/webhooks/mercadopago")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env["MERCADOPAGO_WEBHOOK_SECRET"]?.trim();
+        const { db } = await import("@/server/db");
+        const secretRow = db.prepare("SELECT value FROM app_settings WHERE key = 'mercadopago_webhook_secret'").get() as { value?: string } | undefined;
+        const secret = secretRow?.value?.trim() || process.env["MERCADOPAGO_WEBHOOK_SECRET"]?.trim();
         if (!secret) return Response.json({ error: "webhook not configured" }, { status: 503 });
 
         const url = new URL(request.url);
@@ -44,7 +46,8 @@ export const Route = createFileRoute("/api/webhooks/mercadopago")({
         const paymentId = String(body.data?.id || dataId);
         if (body.type && body.type !== "payment") return Response.json({ ok: true });
 
-        const token = process.env["MERCADOPAGO_ACCESS_TOKEN"]?.trim();
+        const tokenRow = db.prepare("SELECT value FROM app_settings WHERE key = 'mercadopago_access_token'").get() as { value?: string } | undefined;
+        const token = tokenRow?.value?.trim() || process.env["MERCADOPAGO_ACCESS_TOKEN"]?.trim();
         if (!token) return Response.json({ error: "gateway not configured" }, { status: 503 });
 
         const response = await fetch(
