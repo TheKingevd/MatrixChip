@@ -806,12 +806,42 @@ export const updateSaleStatusServerFn = createServerFn({ method: "POST" })
 
     const { db } = await import("@/server/db");
     if (data.status !== undefined) {
-      if (["pago", "paid"].includes(data.status)) {
-        const payment = db.prepare("SELECT pix_status FROM sales WHERE id = ?").get(data.id) as { pix_status?: string } | undefined;
-        if (payment?.pix_status !== "confirmado") {
+      const current = db
+        .prepare(
+          "SELECT seller_id, status, pix_status FROM sales WHERE id = ?",
+        )
+        .get(data.id) as
+        | { seller_id: string | null; status: string; pix_status: string }
+        | undefined;
+
+      if (!current) throw new Error("Venda não encontrada.");
+
+      if (["pago", "paid"].includes(data.status) && current.pix_status !== "confirmado") {
+        // O PDV registra vendas manuais diretamente como pagas. Para alterações
+        // posteriores, pagamento online só pode ser confirmado pelo gateway.
+        if (current.status !== "pago") {
           throw new Error("Pagamento só pode ser confirmado automaticamente pelo gateway.");
         }
       }
+
+      if (current.seller_id && data.status === "cancelada") {
+        const { sellerFinancials } = await import("@/lib/api.functions");
+        // Não dependemos de valores enviados pelo navegador. Se o cancelamento
+        // faria os repasses já pagos ultrapassarem a comissão disponível, bloqueamos.
+        const financials = sellerFinancials(db, current.seller_id);
+        const currentSale = db
+          .prepare("SELECT seller_commission_amount, total, seller_commission_percent FROM sales WHERE id = ?")
+          .get(data.id) as
+          | { seller_commission_amount: number | null; total: number; seller_commission_percent: number | null }
+          | undefined;
+        const saleCommission = currentSale?.seller_commission_amount ??
+          Math.round((Number(currentSale?.total || 0) * Number(currentSale?.seller_commission_percent || 0) + Number.EPSILON) * 100) / 100;
+        const wouldBeBalance = financials.balance - (current.status === "pago" || current.status === "processando" || current.status === "entregue" ? saleCommission : 0);
+        if (wouldBeBalance < -0.0001) {
+          throw new Error("Venda não pode ser cancelada porque parte da comissão já foi repassada.");
+        }
+      }
+
       db.prepare("UPDATE sales SET status = ? WHERE id = ?").run(data.status, data.id);
     }
     if (data.tracking_code !== undefined) {
@@ -992,10 +1022,17 @@ export const deleteSellerServerFn = createServerFn({ method: "POST" })
     if (!seller) throw new Error("Vendedor não encontrado.");
 
     const history = db
-      .prepare("SELECT 1 FROM sales WHERE seller_id = ? LIMIT 1")
+      .prepare(
+        "SELECT 1 FROM sales WHERE seller_id = ? LIMIT 1",
+      )
       .get(data.id);
-    if (history) {
-      throw new Error("Vendedor com histórico não pode ser excluído. Desative-o para preservar a auditoria.");
+    const payouts = db
+      .prepare("SELECT 1 FROM seller_payouts WHERE seller_id = ? LIMIT 1")
+      .get(data.id);
+    if (history || payouts) {
+      throw new Error(
+        "Vendedor com histórico financeiro não pode ser excluído. Desative-o para preservar a auditoria.",
+      );
     }
 
     db.prepare("DELETE FROM sellers WHERE id = ?").run(data.id);
