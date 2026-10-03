@@ -19,7 +19,8 @@ export type SessionUser = {
   role: "admin" | "seller" | "customer";
 };
 
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_REFRESH_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
 type SessionRow = SessionUser & { expires_at: string };
 
@@ -72,9 +73,27 @@ export function getSessionUser(): SessionUser | null {
 
   if (!row) return null;
 
-  if (new Date(row.expires_at).getTime() < Date.now()) {
+  const expiresAtMs = new Date(row.expires_at).getTime();
+  if (expiresAtMs < Date.now()) {
     db.prepare("DELETE FROM sessions WHERE token = ?").run(token);
     return null;
+  }
+
+  // Mantém a sessão viva enquanto o usuário continua usando o sistema.
+  // O cookie continua sendo httpOnly e o token continua apenas no servidor.
+  if (expiresAtMs - Date.now() < SESSION_REFRESH_THRESHOLD_MS) {
+    const refreshedExpiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+    db.prepare("UPDATE sessions SET expires_at = ? WHERE token = ?").run(
+      refreshedExpiresAt,
+      token,
+    );
+    setCookie(SESSION_COOKIE, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env["NODE_ENV"] === "production",
+      maxAge: Math.floor(SESSION_TTL_MS / 1000),
+    });
   }
 
   return { id: row.id, email: row.email, name: row.name, role: row.role };
