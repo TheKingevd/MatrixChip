@@ -64,7 +64,7 @@ function AdminLayout() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/60 bg-card/70 backdrop-blur sticky top-0 z-30">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-3.5">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-3.5">
           <Link to="/" className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-brand-gradient text-primary-foreground shadow-glow">
               <Zap className="size-4 fill-current" />
@@ -83,7 +83,7 @@ function AdminLayout() {
             </Button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-5 pb-2.5">
+        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2.5 sm:px-5">
           {links.map((l) => (
             <Link
               key={l.to}
@@ -97,7 +97,7 @@ function AdminLayout() {
           ))}
         </nav>
       </header>
-      <main className="mx-auto max-w-6xl px-5 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-8">
         <Outlet />
       </main>
     </div>
