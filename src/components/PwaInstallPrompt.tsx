@@ -25,9 +25,14 @@ export function PwaInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHelp, setShowIosHelp] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [standalone, setStandalone] = useState(false);
+  const [ios, setIos] = useState(false);
 
   useEffect(() => {
-    if (isStandalone()) return;
+    setHydrated(true);
+    setStandalone(isStandalone());
+    setIos(isIos());
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
@@ -38,7 +43,7 @@ export function PwaInstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
   }, []);
 
-  if (hidden || isStandalone()) return null;
+  if (!hydrated || hidden || standalone) return null;
 
   const install = async () => {
     if (installEvent) {
@@ -48,12 +53,12 @@ export function PwaInstallPrompt() {
       return;
     }
 
-    if (isIos()) {
+    if (ios) {
       setShowIosHelp(true);
     }
   };
 
-  const supported = Boolean(installEvent) || isIos();
+  const supported = Boolean(installEvent) || ios;
   if (!supported) return null;
 
   return (
