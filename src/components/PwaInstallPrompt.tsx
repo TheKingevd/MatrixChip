@@ -15,7 +15,10 @@ function isStandalone(): boolean {
 }
 
 function isIos(): boolean {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  return (
+    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 export function PwaInstallPrompt() {
@@ -83,7 +86,7 @@ export function PwaInstallPrompt() {
               <div>
                 <h2 className="font-display text-lg font-bold">Instalar no iPhone</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  No iPhone, a instalação é feita pelo menu Compartilhar.
+                  No iPhone/iPad, a instalação é feita pelo menu Compartilhar.
                 </p>
               </div>
               <button
@@ -96,7 +99,7 @@ export function PwaInstallPrompt() {
               </button>
             </div>
             <ol className="mt-4 space-y-3 text-sm text-foreground">
-              <li className="flex gap-3"><span className="font-bold text-primary">1.</span><span>Toque em <b>Compartilhar</b> no Safari.</span></li>
+              <li className="flex gap-3"><span className="font-bold text-primary">1.</span><span>Toque em <b>Compartilhar</b> no navegador.</span></li>
               <li className="flex gap-3"><span className="font-bold text-primary">2.</span><span>Escolha <b>Adicionar à Tela de Início</b>.</span></li>
               <li className="flex gap-3"><span className="font-bold text-primary">3.</span><span>Abra o Matrix Online pelo novo ícone.</span></li>
             </ol>
