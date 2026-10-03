@@ -21,6 +21,10 @@ function isIos(): boolean {
   );
 }
 
+function isAndroid(): boolean {
+  return /android/i.test(navigator.userAgent);
+}
+
 export function PwaInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHelp, setShowIosHelp] = useState(false);
@@ -28,11 +32,14 @@ export function PwaInstallPrompt() {
   const [hydrated, setHydrated] = useState(false);
   const [standalone, setStandalone] = useState(false);
   const [ios, setIos] = useState(false);
+  const [android, setAndroid] = useState(false);
+  const [showAndroidHelp, setShowAndroidHelp] = useState(false);
 
   useEffect(() => {
     setHydrated(true);
     setStandalone(isStandalone());
     setIos(isIos());
+    setAndroid(isAndroid());
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
@@ -55,10 +62,15 @@ export function PwaInstallPrompt() {
 
     if (ios) {
       setShowIosHelp(true);
+      return;
+    }
+
+    if (android) {
+      setShowAndroidHelp(true);
     }
   };
 
-  const supported = Boolean(installEvent) || ios;
+  const supported = Boolean(installEvent) || ios || android;
   if (!supported) return null;
 
   return (
@@ -83,6 +95,37 @@ export function PwaInstallPrompt() {
           <X className="size-4" />
         </button>
       </div>
+
+      {showAndroidHelp && (
+        <div className="fixed inset-0 z-[70] grid place-items-end bg-black/50 p-4 sm:place-items-center">
+          <div className="w-full max-w-sm rounded-2xl border bg-card p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-bold">Instalar no Android</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Se o botão automático não aparecer, use o menu do navegador.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Fechar"
+                className="rounded-md p-1 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowAndroidHelp(false)}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <ol className="mt-4 space-y-3 text-sm text-foreground">
+              <li className="flex gap-3"><span className="font-bold text-primary">1.</span><span>Abra o menu <b>⋮</b> do Chrome.</span></li>
+              <li className="flex gap-3"><span className="font-bold text-primary">2.</span><span>Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</span></li>
+              <li className="flex gap-3"><span className="font-bold text-primary">3.</span><span>Confirme e abra o Matrix Online pelo ícone.</span></li>
+            </ol>
+            <Button className="mt-5 w-full" onClick={() => setShowAndroidHelp(false)}>
+              Entendi
+            </Button>
+          </div>
+        </div>
+      )}
 
       {showIosHelp && (
         <div className="fixed inset-0 z-[70] grid place-items-end bg-black/50 p-4 sm:place-items-center">
