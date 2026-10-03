@@ -37,7 +37,14 @@ export const getSettingsServerFn = createServerFn({ method: "GET" }).handler(asy
 export const getAdminSettingsServerFn = createServerFn({ method: "GET" }).handler(async () => {
   const { requireAdmin } = await import("@/server/auth");
   requireAdmin();
-  return readSettings(true);
+  const settings = await readSettings(false);
+  const { db } = await import("@/server/db");
+  const secretKeys = ["asaas_access_token", "mercadopago_access_token"];
+  for (const key of secretKeys) {
+    const row = db.prepare("SELECT 1 FROM app_settings WHERE key = ? AND length(trim(value)) > 0").get(key);
+    settings[key] = row ? "__CONFIGURADO__" : "";
+  }
+  return settings;
 });
 
 export const testPaymentGatewayServerFn = createServerFn({ method: "POST" })
@@ -481,6 +488,14 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     const shippingCost = 0; // frete grátis
     const total = Math.max(0, subtotal - discount);
 
+    if (!isAdmin) {
+      const minimumRow = db.prepare("SELECT value FROM app_settings WHERE key = 'payment_minimum'").get() as { value?: string } | undefined;
+      const minimum = Number(minimumRow?.value ?? process.env["PAYMENT_MINIMUM"] ?? 1);
+      if (Number.isFinite(minimum) && total < minimum) {
+        throw new Error(`O valor mínimo para pagamento é R$ ${minimum.toFixed(2).replace(".", ",")}.`);
+      }
+    }
+
     // Dados de entrega só são opcionais para o PDV.
     let cep = data.cep?.trim() ?? "";
     let street = data.street?.trim() ?? "";
@@ -701,6 +716,12 @@ export const updateSaleStatusServerFn = createServerFn({ method: "POST" })
 
     const { db } = await import("@/server/db");
     if (data.status !== undefined) {
+      if (["pago", "paid"].includes(data.status)) {
+        const payment = db.prepare("SELECT pix_status FROM sales WHERE id = ?").get(data.id) as { pix_status?: string } | undefined;
+        if (payment?.pix_status !== "confirmado") {
+          throw new Error("Pagamento só pode ser confirmado automaticamente pelo gateway.");
+        }
+      }
       db.prepare("UPDATE sales SET status = ? WHERE id = ?").run(data.status, data.id);
     }
     if (data.tracking_code !== undefined) {
@@ -719,67 +740,32 @@ export const updateSaleStatusServerFn = createServerFn({ method: "POST" })
   });
 
 export const updatePixStatusServerFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) =>
-    z
-      .object({
-        id: z.string(),
-        pix_status: z.enum(["aguardando", "comprovante_enviado", "confirmado"]),
-      })
-      .parse(data),
-  )
+  .validator((data: unknown) => z.object({ id: z.string() }).parse(data))
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("@/server/auth");
     requireAdmin();
-
     const { db } = await import("@/server/db");
-    const confirmedAt = data.pix_status === "confirmado" ? new Date().toISOString() : null;
-    db.prepare(
-      `
-      UPDATE sales 
-      SET pix_status = ?, pix_confirmed_at = ?
-      WHERE id = ?
-    `,
-    ).run(data.pix_status, confirmedAt, data.id);
-
-    if (data.pix_status === "confirmado") {
-      db.prepare("UPDATE sales SET status = 'pago' WHERE id = ? AND status = 'pendente'").run(
-        data.id,
-      );
+    const order = db.prepare("SELECT payment_provider, payment_external_id, pix_status FROM sales WHERE id = ?").get(data.id) as
+      | { payment_provider: "asaas" | "mercadopago" | null; payment_external_id: string | null; pix_status: string }
+      | undefined;
+    if (!order) throw new Error("Pedido não encontrado.");
+    if (!order.payment_provider || !order.payment_external_id) throw new Error("Pedido sem cobrança automática.");
+    const { getPixStatus } = await import("@/server/payments");
+    const result = await getPixStatus(order.payment_provider, order.payment_external_id);
+    if (result.paid) {
+      db.prepare("UPDATE sales SET pix_status = 'confirmado', pix_confirmed_at = COALESCE(pix_confirmed_at, ?), status = CASE WHEN status IN ('pendente','erro_pagamento') THEN 'pago' ELSE status END WHERE id = ?").run(new Date().toISOString(), data.id);
     }
-    return { ok: true };
+    return { ok: true, paid: result.paid, status: result.status };
   });
 
 /** Tamanho máximo do comprovante em base64 (~5 MB de arquivo). */
 const MAX_RECEIPT_CHARS = 7_000_000;
 
 export const uploadReceiptServerFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) =>
-    z
-      .object({
-        id: z.string(),
-        receipt_data_url: z
-          .string()
-          .max(MAX_RECEIPT_CHARS, "Comprovante maior que 5 MB")
-          .regex(
-            /^data:(image\/(png|jpe?g|webp|heic)|application\/pdf);base64,[A-Za-z0-9+/=]+$/,
-            "Envie uma imagem (PNG, JPG, WEBP) ou PDF",
-          ),
-      })
-      .parse(data),
-  )
-  .handler(async ({ data }) => {
+  .handler(async () => {
     const { requireAdmin } = await import("@/server/auth");
     requireAdmin();
-
-    const { db } = await import("@/server/db");
-    db.prepare(
-      `
-      UPDATE sales 
-      SET receipt_path = ?, pix_status = 'comprovante_enviado'
-      WHERE id = ?
-    `,
-    ).run(data.receipt_data_url, data.id);
-    return { ok: true };
+    throw new Error("Comprovante manual desativado: pagamentos são confirmados somente pelo gateway.");
   });
 
 // ==========================================
