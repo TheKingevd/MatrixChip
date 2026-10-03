@@ -115,7 +115,7 @@ async function verificarGitHub() {
 
                 if (precisaInstalarDependencias) {
                     console.log("📦 Dependências alteradas. Executando npm install...");
-                    const install = await executar("npm install --no-audit --no-fund");
+                    const install = await executar("npm install --no-package-lock --no-audit --no-fund");
                     console.log(install.stdout);
                 }
             } catch (erroDependencias) {
