@@ -261,7 +261,7 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border-border/80 bg-card p-6 shadow-2xl sm:rounded-2xl">
+      <DialogContent className="max-h-[92vh] w-[calc(100%-1rem)] max-w-xl overflow-x-hidden overflow-y-auto border-border/80 bg-card p-4 shadow-2xl sm:w-full sm:rounded-2xl sm:p-6">
         <DialogHeader className="border-b border-border/60 pb-4">
           <div className="flex items-center gap-2 text-primary">
             <Package className="size-5" />
