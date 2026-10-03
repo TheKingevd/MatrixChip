@@ -51,15 +51,15 @@ async function apiJson(url: string, init: RequestInit, providerName: string) {
     const detail =
       body?.errors?.map?.((e: any) => e.description || e.code).filter(Boolean).join(" | ") ||
       body?.message ||
-      \`HTTP \${response.status}\`;
-    throw new Error(\`\${providerName}: \${detail}\`);
+      `HTTP ${response.status}`;
+    throw new Error(`${providerName}: ${detail}`);
   }
   return body;
 }
 
 function qrDataUrl(base64: string): string {
   if (base64.startsWith("data:")) return base64;
-  return \`data:image/png;base64,\${base64}\`;
+  return `data:image/png;base64,${base64}`;
 }
 
 function splitName(name: string) {
@@ -90,7 +90,7 @@ async function createAsaasCharge(input: {
   };
 
   const customer = await apiJson(
-    \`\${base}/v3/customers\`,
+    `${base}/v3/customers`,
     {
       method: "POST",
       headers,
@@ -107,7 +107,7 @@ async function createAsaasCharge(input: {
 
   const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const payment = await apiJson(
-    \`\${base}/v3/payments\`,
+    `${base}/v3/payments`,
     {
       method: "POST",
       headers,
@@ -116,7 +116,7 @@ async function createAsaasCharge(input: {
         billingType: "PIX",
         value: Number(input.total.toFixed(2)),
         dueDate,
-        description: \`Matrix Online - Pedido \${input.orderId}\`,
+        description: `Matrix Online - Pedido ${input.orderId}`,
         externalReference: input.orderId,
       }),
     },
@@ -124,7 +124,7 @@ async function createAsaasCharge(input: {
   );
 
   const qr = await apiJson(
-    \`\${base}/v3/payments/\${encodeURIComponent(payment.id)}/pixQrCode\`,
+    `${base}/v3/payments/${encodeURIComponent(payment.id)}/pixQrCode`,
     {
       method: "GET",
       headers: {
@@ -165,14 +165,14 @@ async function createMercadoPagoCharge(input: {
     {
       method: "POST",
       headers: {
-        Authorization: \`Bearer \${token}\`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         Accept: "application/json",
         "X-Idempotency-Key": idempotencyKey,
       },
       body: JSON.stringify({
         transaction_amount: Number(input.total.toFixed(2)),
-        description: \`Matrix Online - Pedido \${input.orderId}\`,
+        description: `Matrix Online - Pedido ${input.orderId}`,
         payment_method_id: "pix",
         external_reference: input.orderId,
         ...((settingOrEnv("public_app_url", "PUBLIC_APP_URL")) ? {
@@ -229,11 +229,11 @@ export async function getPixStatus(
   externalId: string,
 ): Promise<{ status: string; paid: boolean }> {
   if (selectedProvider === "asaas") {
-    const token = process.env["ASAAS_ACCESS_TOKEN"]?.trim();
+    const token = settingOrEnv("asaas_access_token", "ASAAS_ACCESS_TOKEN");
     if (!token) throw new Error("ASAAS_ACCESS_TOKEN não configurado no .env.");
-    const base = (process.env["ASAAS_API_URL"] || "https://api.asaas.com").replace(/\/$/, "");
+    const base = (settingOrEnv("asaas_api_url", "ASAAS_API_URL") || "https://api.asaas.com").replace(/\/$/, "");
     const payment = await apiJson(
-      \`\${base}/v3/payments/\${encodeURIComponent(externalId)}\`,
+      `${base}/v3/payments/${encodeURIComponent(externalId)}`,
       {
         method: "GET",
         headers: {
@@ -248,13 +248,13 @@ export async function getPixStatus(
     return { status, paid: status === "RECEIVED" || status === "CONFIRMED" };
   }
 
-  const token = process.env["MERCADOPAGO_ACCESS_TOKEN"]?.trim();
+  const token = settingOrEnv("mercadopago_access_token", "MERCADOPAGO_ACCESS_TOKEN");
   if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado no .env.");
   const payment = await apiJson(
-    \`https://api.mercadopago.com/v1/payments/\${encodeURIComponent(externalId)}\`,
+    `https://api.mercadopago.com/v1/payments/${encodeURIComponent(externalId)}`,
     {
       method: "GET",
-      headers: { Authorization: \`Bearer \${token}\`, Accept: "application/json" },
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     },
     "Mercado Pago",
   );
