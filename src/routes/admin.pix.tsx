@@ -71,7 +71,7 @@ function PixEnviosPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold">Envios e Comprovantes PIX</h1>
+      <h1 className="font-display text-2xl font-bold">Pagamentos PIX automáticos</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Pagamentos são confirmados exclusivamente pelo Asaas ou Mercado Pago. O painel apenas consulta o gateway.
       </p>
@@ -143,7 +143,7 @@ function PixEnviosPage() {
                       <CheckCircle2 className="mr-2 size-4" /> Pagamento confirmado pelo gateway
                     </span>
                   )}
-                </div>/div>
+                </div>
               </div>
             </div>
           );
