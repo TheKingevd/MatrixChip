@@ -932,11 +932,18 @@ function sellerFinancials(
     .get(sellerId) as { count: number; revenue: number; earned: number };
 
   const paid = db
-    .prepare("SELECT COALESCE(SUM(amount), 0) AS paid FROM seller_payouts WHERE seller_id = ?")
-    .get(sellerId) as { paid: number };
+    .prepare(
+      `SELECT COALESCE(
+         SUM(COALESCE(amount_cents, CAST(ROUND(amount * 100.0) AS INTEGER))),
+         0
+       ) AS paid_cents
+       FROM seller_payouts
+       WHERE seller_id = ?`,
+    )
+    .get(sellerId) as { paid_cents: number };
 
   const earnedCents = Math.round(Number(sales.earned || 0) * 100);
-  const paidCents = Math.round(Number(paid.paid || 0) * 100);
+  const paidCents = Number(paid.paid_cents || 0);
 
   return {
     count: Number(sales.count || 0),
@@ -1059,7 +1066,9 @@ export const getSellerPayoutsServerFn = createServerFn({ method: "GET" }).handle
   const { db } = await import("@/server/db");
   return db
     .prepare(
-      `SELECT p.id, p.seller_id, s.name AS seller_name, p.amount, p.note, p.paid_at, p.created_at,
+      `SELECT p.id, p.seller_id, s.name AS seller_name,
+              COALESCE(p.amount_cents, CAST(ROUND(p.amount * 100.0) AS INTEGER)) / 100.0 AS amount,
+              p.note, p.paid_at, p.created_at,
               p.created_by
        FROM seller_payouts p
        JOIN sellers s ON s.id = p.seller_id
@@ -1106,13 +1115,15 @@ export const createSellerPayoutServerFn = createServerFn({ method: "POST" })
       const now = new Date().toISOString();
       db.prepare(
         `
-        INSERT INTO seller_payouts (id, seller_id, amount, note, paid_at, created_at, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO seller_payouts
+          (id, seller_id, amount, amount_cents, note, paid_at, created_at, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       ).run(
         id,
         seller.id,
         amountCents / 100,
+        amountCents,
         data.note || null,
         now,
         now,
