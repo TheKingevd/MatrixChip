@@ -1,6 +1,6 @@
 ﻿import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Trash2, WalletCards } from "lucide-react";
 import {
@@ -33,8 +33,6 @@ function ComissoesPage() {
   const set = (k: keyof typeof EMPTY, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
   const selectedPayoutSeller = (sellers ?? []).find((s) => s.id === payoutSellerId);
-  const unassigned = useMemo(() => ({ count: 0, revenue: 0 }), []);
-
   const payout = useMutation({
     mutationFn: async () => {
       const amount = Number(payoutAmount.replace(",", "."));
@@ -361,7 +359,7 @@ function ComissoesPage() {
               <tbody>
                 {(payouts ?? []).map((p) => (
                   <tr key={p.id} className="border-t border-border/60">
-                    <td className="px-3 py-2 font-medium">{(p as SellerPayoutWithName).seller_name}</td>
+                    <td className="px-3 py-2 font-medium">{p.seller_name || "Vendedor"}</td>
                     <td className="px-3 py-2 font-semibold text-primary">{formatBRL(Number(p.amount))}</td>
                     <td className="px-3 py-2">{new Date(p.paid_at).toLocaleString("pt-BR")}</td>
                     <td className="px-3 py-2 text-muted-foreground">{p.note || "—"}</td>
