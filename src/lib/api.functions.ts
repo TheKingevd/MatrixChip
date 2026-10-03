@@ -234,6 +234,9 @@ export const saveCouponServerFn = createServerFn({ method: "POST" })
     const { db } = await import("@/server/db");
     const now = new Date().toISOString();
     const id = data.id || crypto.randomUUID();
+    const wasExisting = Boolean(
+      data.id && db.prepare("SELECT 1 FROM coupons WHERE id = ?").get(data.id),
+    );
 
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO coupons (id, code, percent, country_code, number_type, active, expires_at, created_at, updated_at)
@@ -252,6 +255,16 @@ export const saveCouponServerFn = createServerFn({ method: "POST" })
       now,
       now,
     );
+
+    if (!wasExisting) {
+      const { sendAdminPush } = await import("@/server/push");
+      await sendAdminPush({
+        title: "Novo cupom criado",
+        body: `Cupom ${data.code.toUpperCase()} criado com ${data.percent}% de desconto.`,
+        url: "/admin/cupons",
+        tag: `coupon-created-${id}`,
+      }).catch((error) => console.error("[matrix] push de cupom:", error));
+    }
 
     return { ok: true, id };
   });
@@ -610,6 +623,38 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         pixCharge.expiresAt || null,
         orderId,
       );
+
+      if (!isAdmin) {
+        const { sendAdminPush } = await import("@/server/push");
+        await sendAdminPush({
+          title: "Novo pedido de chip",
+          body: `${data.customer_name} fez o pedido ${orderId} no valor de R$ ${total.toFixed(2).replace(".", ",")}.`,
+          url: "/admin/historico",
+          tag: `sale-created-${orderId}`,
+        }).catch((error) => console.error("[matrix] push de novo pedido:", error));
+
+        if (couponCode) {
+          db.prepare(
+            `INSERT INTO coupon_redemptions
+             (id, coupon_code, sale_id, customer_name, customer_email, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+          ).run(
+            crypto.randomUUID(),
+            couponCode,
+            orderId,
+            data.customer_name,
+            data.customer_email || null,
+            now,
+          );
+
+          await sendAdminPush({
+            title: "Cupom resgatado",
+            body: `${data.customer_name} resgatou o cupom ${couponCode} no pedido ${orderId}.`,
+            url: "/admin/cupons",
+            tag: `coupon-redeemed-${orderId}`,
+          }).catch((error) => console.error("[matrix] push de cupom resgatado:", error));
+        }
+      }
 
       return {
         ok: true,
