@@ -109,7 +109,12 @@ function PdvPage() {
 
   // Nunca usamos o número de suporte como fallback: a cobrança deve ir
   // somente para o WhatsApp informado pelo cliente.
-  const whatsAppTarget = customerPhone.trim() || lastCustomerPhone.trim();
+  const rawWhatsAppTarget = customerPhone.trim() || lastCustomerPhone.trim();
+  const targetDigits = rawWhatsAppTarget.replace(/\D/g, "");
+  const whatsAppTarget =
+    code === "BR" && (targetDigits.length === 10 || targetDigits.length === 11)
+      ? `55${targetDigits}`
+      : targetDigits;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
