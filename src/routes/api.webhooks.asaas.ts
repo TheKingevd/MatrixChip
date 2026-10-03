@@ -4,7 +4,9 @@ export const Route = createFileRoute("/api/webhooks/asaas")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env["ASAAS_WEBHOOK_TOKEN"]?.trim();
+        const { db } = await import("@/server/db");
+        const setting = db.prepare("SELECT value FROM app_settings WHERE key = 'asaas_webhook_token'").get() as { value?: string } | undefined;
+        const expected = setting?.value?.trim() || process.env["ASAAS_WEBHOOK_TOKEN"]?.trim();
         const received = request.headers.get("asaas-access-token")?.trim();
 
         if (!expected || !received || received !== expected) {
@@ -19,7 +21,6 @@ export const Route = createFileRoute("/api/webhooks/asaas")({
         const paymentId = body.payment?.id;
         if (!paymentId) return Response.json({ ok: true });
 
-        const { db } = await import("@/server/db");
         const paid = body.event === "PAYMENT_RECEIVED" || body.event === "PAYMENT_CONFIRMED";
 
         if (paid) {
