@@ -19,8 +19,6 @@ import {
 import {
   formatBRL,
   useCatalog,
-  usePixSettings,
-  useSupportPhone,
   whatsAppLink,
 } from "@/lib/catalog";
 import { matchCoupon, useCoupons } from "@/lib/coupons";
@@ -49,6 +47,7 @@ function PdvPage() {
   const [code, setCode] = useState("BR");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [lastCustomerPhone, setLastCustomerPhone] = useState("");
   const [ddd, setDdd] = useState("11");
   const [assignedNumber, setAssignedNumber] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -77,9 +76,7 @@ function PdvPage() {
   const totalDiscount = discount + couponDiscount;
   const total = Math.max(0, price * quantity - totalDiscount);
 
-  const pix = usePixSettings();
-  const supportPhone = useSupportPhone();
-
+  // O PDV não cria cobrança automática no gateway.
   const buildWhatsAppMessage = () => {
     const typeLabel =
       numberType === "business"
@@ -89,7 +86,7 @@ function PdvPage() {
           : "WhatsApp pessoal ou Business";
     const lines = [
       `*Pedido — ${selected?.name ?? ""}*`,
-      ``,
+      ` `,
       `Produto: ${typeLabel} (${delivery === "esim" ? "eSIM virtual" : "Chip físico"})`,
       ...(selected?.code === "BR" ? [`DDD de preferência: ${ddd}`] : []),
       `Quantidade: ${quantity}`,
@@ -99,18 +96,19 @@ function PdvPage() {
         ? [`Cupom ${coupon.code} (${Number(coupon.percent)}%): -${formatBRL(couponDiscount)}`]
         : []),
       `*Total: ${formatBRL(total)}*`,
-      ``,
-      `*Pagamento via PIX*`,
-      ...(pix.key ? [`Chave PIX${pix.keyType ? ` (${pix.keyType})` : ""}: ${pix.key}`] : []),
-      ...(pix.holder ? [`Titular: ${pix.holder}${pix.bank ? ` · ${pix.bank}` : ""}`] : []),
-      ...(pix.paymentLink ? [``, `Link de pagamento: ${pix.paymentLink}`] : []),
-      ``,
-      `Após o pagamento, envie o comprovante por aqui. Obrigado!`,
+      ` `,
+      `*Forma de pagamento: ${payment.toUpperCase()}*`,
+      `Esta é uma cobrança enviada pelo atendimento. Nenhuma cobrança automática foi criada.`,
+      `Responda por aqui para receber as instruções de pagamento.`,
+      ` `,
+      `Obrigado!`,
     ];
-    return lines.join("\n");
+    return lines.join("\\n");
   };
 
-  const whatsAppTarget = customerPhone.trim() ? customerPhone : supportPhone;
+  // Nunca usamos o número de suporte como fallback: a cobrança deve ir
+  // somente para o WhatsApp informado pelo cliente.
+  const whatsAppTarget = customerPhone.trim() || lastCustomerPhone.trim();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +170,7 @@ function PdvPage() {
     setBusy(false);
     void qc.invalidateQueries({ queryKey: ["sales"] });
     setMsg({ ok: true, text: `Venda registrada: ${formatBRL(total)}` });
+    if (customerPhone.trim()) setLastCustomerPhone(customerPhone.trim());
     setCustomerName("");
     setCustomerPhone("");
     setAssignedNumber("");
@@ -435,7 +434,7 @@ function PdvPage() {
           <Button type="submit" className="w-full" disabled={busy}>
             {busy ? "Registrando..." : "Registrar venda"}
           </Button>
-          <Button asChild variant="outline" className="w-full" disabled={!selected}>
+          <Button asChild variant="outline" className="w-full" disabled={!selected || !whatsAppTarget}>
             <a
               href={whatsAppLink(buildWhatsAppMessage(), whatsAppTarget)}
               target="_blank"
@@ -446,9 +445,9 @@ function PdvPage() {
           </Button>
           <p className="text-xs text-muted-foreground">
             A mensagem vai com o resumo do pedido, a chave PIX cadastrada e o link de pagamento.
-            {customerPhone.trim()
-              ? " Destino: WhatsApp do cliente."
-              : " Sem telefone do cliente — abre o seu WhatsApp de contato."}
+            {whatsAppTarget
+              ? ` Destino: WhatsApp do cliente (${whatsAppTarget}).`
+              : " Informe o telefone do cliente para enviar a cobrança."}
           </p>
         </aside>
       </form>
