@@ -152,6 +152,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     seller_id TEXT NOT NULL,
     amount REAL NOT NULL,
+    amount_cents INTEGER,
     note TEXT,
     paid_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -186,6 +187,10 @@ addColumnIfMissing("sales", "pix_expires_at", "TEXT");
 addColumnIfMissing("sales", "seller_commission_percent", "REAL");
 addColumnIfMissing("sales", "seller_commission_amount", "REAL");
 addColumnIfMissing("seller_payouts", "created_by", "TEXT");
+addColumnIfMissing("seller_payouts", "amount_cents", "INTEGER");
+db.prepare(
+  "UPDATE seller_payouts SET amount_cents = CAST(ROUND(amount * 100.0) AS INTEGER) WHERE amount_cents IS NULL",
+).run();
 
 // Funções utilitárias de hash de senha
 export function hashPassword(password: string): string {
