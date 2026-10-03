@@ -192,6 +192,25 @@ db.prepare(
   "UPDATE seller_payouts SET amount_cents = CAST(ROUND(amount * 100.0) AS INTEGER) WHERE amount_cents IS NULL",
 ).run();
 
+// Migração única dos pedidos antigos: congela a comissão atual do vendedor
+// somente onde a venda ainda não tinha o snapshot. Novas vendas já recebem
+// o percentual no servidor no momento do registro.
+db.prepare(
+  `UPDATE sales
+   SET seller_commission_percent = (
+         SELECT commission_percent FROM sellers WHERE sellers.id = sales.seller_id
+       ),
+       seller_commission_amount = ROUND(
+         total * (
+           SELECT commission_percent FROM sellers WHERE sellers.id = sales.seller_id
+         ) / 100.0,
+         2
+       )
+   WHERE seller_id IS NOT NULL
+     AND seller_commission_percent IS NULL
+     AND EXISTS (SELECT 1 FROM sellers WHERE sellers.id = sales.seller_id)`,
+).run();
+
 // Funções utilitárias de hash de senha
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
