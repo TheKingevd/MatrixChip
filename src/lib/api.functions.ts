@@ -353,20 +353,29 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
 
       if (existing) {
         if (existing.role !== "customer") {
-          throw new Error("Este e-mail já está sendo usado por uma conta administrativa.");
+          throw new Error(
+            "Este e-mail pertence a uma conta administrativa. Use outro e-mail para criar sua conta de cliente.",
+          );
         }
-        if (data.account_secret && !verifyPassword(data.account_secret, existing.password_hash)) {
-          throw new Error("Este e-mail já possui uma conta. A senha informada está incorreta.");
+        if (!data.account_secret) {
+          throw new Error("Este e-mail já possui uma conta. Informe a senha para continuar.");
         }
-        session = { id: existing.id, email: data.customer_email, name: data.customer_name, role: "customer" };
+        if (!verifyPassword(data.account_secret, existing.password_hash)) {
+          throw new Error("Senha incorreta para esta conta de cliente.");
+        }
+        session = { id: existing.id, email: existing.email, name: existing.name, role: "customer" };
       } else {
+        if (!data.account_secret) {
+          throw new Error("Crie uma senha com pelo menos 8 caracteres para sua conta.");
+        }
+
         const customerId = crypto.randomUUID();
         db.prepare(
           "INSERT INTO users (id, email, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, 'customer', ?)",
         ).run(
           customerId,
           data.customer_email,
-          hashPassword(data.account_secret || crypto.randomBytes(24).toString("base64url")),
+          hashPassword(data.account_secret),
           data.customer_name,
           new Date().toISOString(),
         );
