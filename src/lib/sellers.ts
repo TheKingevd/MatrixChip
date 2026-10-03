@@ -16,6 +16,11 @@ export type Seller = {
   created_at: string;
   email?: string | null;
   user_id?: string | null;
+  count: number;
+  revenue: number;
+  earned: number;
+  paid: number;
+  balance: number;
 };
 
 export type SellerPayout = {
