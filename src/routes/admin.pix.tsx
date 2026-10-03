@@ -35,6 +35,7 @@ type SaleRow = {
   total: number;
   pix_status: string;
   pix_confirmed_at: string | null;
+  payment_provider: string | null;
 };
 
 function PixEnviosPage() {
@@ -67,7 +68,9 @@ function PixEnviosPage() {
 
 
 
-  const rows = (data ?? []).filter((r) => filter === "todos" || r.pix_status === filter);
+  const rows = (data ?? []).filter(
+    (r) => Boolean(r.payment_provider) && (filter === "todos" || r.pix_status === filter),
+  );
 
   return (
     <div>
