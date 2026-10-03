@@ -1,12 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, Copy, ExternalLink, LogOut, Package, Truck, XCircle, Zap } from "lucide-react";
+import { CheckCircle2, Clock3, Copy, ExternalLink, LogOut, Package, ShoppingBag, Truck, XCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { getCustomerOrdersServerFn, refreshCustomerOrderPaymentServerFn } from "@/lib/api.functions";
-import { formatBRL } from "@/lib/catalog";
+import { formatBRL, useSupportPhone, whatsAppLink } from "@/lib/catalog";
+import { Flag } from "@/components/Flag";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/conta")({
@@ -41,10 +43,15 @@ function StatusIcon({ status }: { status: string }) {
   return <Clock3 className="size-5 text-amber-400" />;
 }
 
+const DELIVERY_STEPS = [{ key: "pago", label: "Pagamento confirmado", icon: CheckCircle2 }, { key: "preparando", label: "Em separação", icon: Package }, { key: "enviado", label: "Enviado", icon: Truck }, { key: "entregue", label: "Entregue", icon: CheckCircle2 }];
+
+function deliveryStepIndex(status: string, paid: boolean) { if (status === "entregue") return 3; if (status === "enviado") return 2; if (status === "preparando") return 1; if (paid || status === "pago") return 0; return -1; }
+
 function CustomerAccount() {
   const { loading, session, user, signOut } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const supportPhone = useSupportPhone();
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["customer-orders"],
@@ -107,10 +114,12 @@ function CustomerAccount() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-5 sm:py-8">
-        <div>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Olá, {user.name.split(" ")[0]} 👋</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Aqui você acompanha seus chips, pagamentos e entrega.</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div><h1 className="font-display text-2xl font-bold sm:text-3xl">Olá, {user.name.split(" ")[0]} 👋</h1><p className="mt-1 text-sm text-muted-foreground">Acompanhe seus pedidos, pagamentos e envios em um só lugar.</p></div>
+          <div className="flex flex-wrap gap-2"><Button onClick={() => void navigate({ to: "/" })}><ShoppingBag className="mr-1.5 size-4" /> Comprar outro chip</Button><Button variant="outline" asChild><a href={whatsAppLink("Olá! Preciso de ajuda com meu pedido na Matrix Online.", supportPhone)} target="_blank" rel="noreferrer"><WhatsAppIcon className="mr-1.5 size-5" /> Suporte</a></Button></div>
         </div>
+        {orders.length > 0 && <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-2xl border border-border/70 bg-card p-4"><p className="text-xs text-muted-foreground">Meus pedidos</p><p className="mt-1 font-display text-2xl font-black">{orders.length}</p></div><div className="rounded-2xl border border-border/70 bg-card p-4"><p className="text-xs text-muted-foreground">Pedidos em envio</p><p className="mt-1 font-display text-2xl font-black">{orders.filter((o: any) => ["preparando", "enviado"].includes(o.status)).length}</p></div><div className="rounded-2xl border border-border/70 bg-card p-4"><p className="text-xs text-muted-foreground">Total em compras</p><p className="mt-1 font-display text-2xl font-black text-primary">{formatBRL(orders.reduce((sum: number, o: any) => sum + Number(o.total), 0))}</p></div></div>}
+        <div className="flex items-center gap-2"><ShoppingBag className="size-5 text-primary" /><h2 className="font-display text-xl font-bold">Meus pedidos e envios</h2></div>
 
         {isLoading ? (
           <div className="rounded-2xl border border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">Carregando pedidos…</div>
@@ -124,6 +133,7 @@ function CustomerAccount() {
           <div className="space-y-5">
             {orders.map((order: any) => {
               const paid = order.pix_status === "confirmado";
+              const currentStep = deliveryStepIndex(order.status, paid);
               return (
                 <article key={order.id} className="rounded-2xl border border-border/70 bg-card p-4 shadow-card sm:p-5">
                   <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
@@ -139,6 +149,8 @@ function CustomerAccount() {
                       <p className="font-display text-2xl font-black text-primary">{formatBRL(Number(order.total))}</p>
                     </div>
                   </div>
+
+                  <div className="mt-5 rounded-xl border border-border/60 bg-background/30 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Andamento do envio</p><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{DELIVERY_STEPS.map((step, index) => { const active = index <= currentStep; const StepIcon = step.icon; return <div key={step.key} className={active ? "rounded-xl border border-primary/30 bg-primary/5 p-3" : "rounded-xl border border-border/60 bg-background/30 p-3"}><StepIcon className={active ? "size-5 text-primary" : "size-5 text-muted-foreground"} /><p className={active ? "mt-2 text-xs font-semibold" : "mt-2 text-xs text-muted-foreground"}>{step.label}</p></div>; })}</div></div>
 
                   <div className="mt-5 grid gap-4 border-t border-border/60 pt-5 sm:grid-cols-2 md:grid-cols-3">
                     <div>
