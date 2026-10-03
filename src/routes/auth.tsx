@@ -10,12 +10,12 @@ import { loginServerFn } from "@/lib/auth.functions";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Acesso Administrativo — Matrix Online" },
+      { title: "Entrar na Minha Conta — Matrix Online" },
       {
         name: "description",
-        content: "Área restrita de gestão de chips físicos e pedidos da Matrix Online.",
+        content: "Acesse sua conta para acompanhar pedidos, pagamentos e entregas. Administradores continuam sendo direcionados ao painel.",
       },
-      { property: "og:title", content: "Acesso Administrativo — Matrix Online" },
+      { property: "og:title", content: "Entrar na Minha Conta — Matrix Online" },
       { property: "robots", content: "noindex" },
     ],
   }),
@@ -69,14 +69,14 @@ function AuthPage() {
           <div>
             <h2 className="font-display text-lg font-bold">Matrix Online</h2>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              Painel Administrativo
+              Minha Conta
             </p>
           </div>
         </div>
 
-        <h1 className="mt-6 font-display text-2xl font-bold text-foreground">Entrar no Sistema</h1>
+        <h1 className="mt-6 font-display text-2xl font-bold text-foreground">Entrar na Minha Conta</h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          Gestão de pedidos de chips físicos, estoque e entregas.
+          Acompanhe suas compras, pagamentos, preparação e entrega dos seus chips físicos.
         </p>
 
         <div className="mt-6 space-y-4">
