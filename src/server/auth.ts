@@ -16,7 +16,7 @@ export type SessionUser = {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "seller";
+  role: "admin" | "seller" | "customer";
 };
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
