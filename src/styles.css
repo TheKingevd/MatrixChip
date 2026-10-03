@@ -278,3 +278,33 @@
   }
 }
 
+
+
+/* Responsividade global — telas pequenas */
+@media (max-width: 639px) {
+  html {
+    overflow-x: hidden;
+  }
+
+  body {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  textarea,
+  select {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-pop {
+    transition: none;
+  }
+}
