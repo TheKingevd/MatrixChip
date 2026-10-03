@@ -991,21 +991,35 @@ export const saveSellerServerFn = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     const id = data.id || crypto.randomUUID();
 
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO sellers (id, name, email, commission_percent, active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM sellers WHERE id = ?), ?), ?)
-    `);
+    const existing = db.prepare("SELECT id FROM sellers WHERE id = ?").get(id);
 
-    stmt.run(
-      id,
-      data.name,
-      data.email || null,
-      data.commission_percent,
-      data.active !== false ? 1 : 0,
-      id,
-      now,
-      now,
-    );
+    if (existing) {
+      db.prepare(
+        `UPDATE sellers
+         SET name = ?, commission_percent = ?, active = ?, updated_at = ?
+         WHERE id = ?`,
+      ).run(
+        data.name,
+        data.commission_percent,
+        data.active !== false ? 1 : 0,
+        now,
+        id,
+      );
+    } else {
+      db.prepare(
+        `INSERT INTO sellers
+         (id, name, email, commission_percent, active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        data.name,
+        data.email || null,
+        data.commission_percent,
+        data.active !== false ? 1 : 0,
+        now,
+        now,
+      );
+    }
 
     return { ok: true, id };
   });
