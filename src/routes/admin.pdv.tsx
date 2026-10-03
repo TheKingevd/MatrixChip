@@ -192,7 +192,7 @@ function PdvPage() {
     <div>
       <h1 className="font-display text-2xl font-bold">PDV — registrar venda</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Selecione o país, ajuste o valor e registre a venda no caixa.
+        Selecione o país, ajuste o valor e registre a venda no caixa. O PDV não cria cobrança automática; a cobrança pode ser enviada manualmente ao WhatsApp do cliente.
       </p>
 
       <form onSubmit={submit} className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -449,11 +449,11 @@ function PdvPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Enviar cobrança no WhatsApp (PIX anexado)
+              Enviar cobrança no WhatsApp
             </a>
           </Button>
           <p className="text-xs text-muted-foreground">
-            A mensagem vai com o resumo do pedido, a chave PIX cadastrada e o link de pagamento.
+            A mensagem vai com o resumo da venda e o valor a pagar. Nenhuma cobrança automática é criada.
             {whatsAppTarget
               ? ` Destino: WhatsApp do cliente (${whatsAppTarget}).`
               : " Informe o telefone do cliente para enviar a cobrança."}
