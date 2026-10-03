@@ -39,6 +39,7 @@ export type SellerSale = {
   total: number;
   status: string;
   seller_id: string | null;
+  seller_commission_amount?: number | null;
   created_at: string;
 };
 
