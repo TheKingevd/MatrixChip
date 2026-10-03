@@ -560,12 +560,12 @@ export const getCustomerOrdersServerFn = createServerFn({ method: "GET" }).handl
 
   const { db } = await import("@/server/db");
   return db.prepare(
-    \`SELECT id, created_at, country_code, country_name, dial, ddd, assigned_number,
+    `SELECT id, created_at, country_code, country_name, dial, ddd, assigned_number,
             customer_name, customer_phone, cep, street, number, complement, neighborhood,
             city, state, number_type, delivery, quantity, unit_price, discount, total,
             status, tracking_code, pix_status, pix_confirmed_at, payment_provider,
             payment_external_id, pix_payload, pix_expires_at
-     FROM sales WHERE customer_id = ? ORDER BY created_at DESC LIMIT 100\`,
+     FROM sales WHERE customer_id = ? ORDER BY created_at DESC LIMIT 100`,
   ).all(user.id);
 });
 
