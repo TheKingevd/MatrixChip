@@ -1,6 +1,5 @@
 ﻿import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { getAdminSettingsServerFn, testPaymentGatewayServerFn, updateSettingsServerFn } from "@/lib/api.functions";
 import { Button } from "@/components/ui/button";
