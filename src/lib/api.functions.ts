@@ -1163,7 +1163,8 @@ export const getMySalesServerFn = createServerFn({ method: "GET" }).handler(asyn
   const seller = currentSeller(db, session.id);
   return db
     .prepare(
-      `SELECT id, created_at, country_name, customer_name, total, status, seller_id
+      `SELECT id, created_at, country_name, customer_name, total, status, seller_id,
+              seller_commission_amount
        FROM sales WHERE seller_id = ? ORDER BY created_at DESC LIMIT 500`,
     )
     .all(seller.id);
