@@ -54,6 +54,7 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
   const [customerCpf, setCustomerCpf] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [accountSecret, setAccountSecret] = useState("");
 
   // Endereço
   const [cep, setCep] = useState("");
