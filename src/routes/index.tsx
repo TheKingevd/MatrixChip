@@ -139,6 +139,12 @@ export function Index() {
             </a>
           </nav>
           <div className="flex items-center gap-3">
+            <a
+              href="/conta"
+              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline"
+            >
+              Minha conta
+            </a>
             <Button asChild size="sm" className="btn-pop shadow-glow">
               <a href={buildWhatsAppLink("Olá Matrix Online! Gostaria de tirar dúvidas sobre os chips físicos.")}>
                 <WhatsAppIcon className="mr-1.5 size-5 shrink-0" /> Suporte WhatsApp
