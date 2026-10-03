@@ -1,6 +1,5 @@
 import { db } from "./db";
-import { generateVapidKeys } from "@mmmike/web-push/vapid";
-import { sendPushNotification, type PushSubscriptionData } from "@mmmike/web-push/send";
+import { generateVapidKeys, sendPushNotification, type PushSubscriptionData } from "@mmmike/web-push";
 
 type StoredSubscription = PushSubscriptionData & {
   user_id: string;
