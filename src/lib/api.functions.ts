@@ -264,7 +264,7 @@ const createOrderSchema = z.object({
     .max(160)
     .optional()
     .or(z.literal("")),
-  customer_password: z.string().min(8, "A senha precisa ter ao menos 8 caracteres").max(100).optional(),
+  account_secret: z.string().min(8, "A senha precisa ter ao menos 8 caracteres").max(100).optional(),
   cep: z.string().trim().max(12).optional(),
   street: z.string().trim().max(160).optional(),
   number: z.string().trim().max(20).optional(),
@@ -355,7 +355,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         if (existing.role !== "customer") {
           throw new Error("Este e-mail já está sendo usado por uma conta administrativa.");
         }
-        if (data.customer_password && !verifyPassword(data.customer_password, existing.password_hash)) {
+        if (data.account_secret && !verifyPassword(data.account_secret, existing.password_hash)) {
           throw new Error("Este e-mail já possui uma conta. A senha informada está incorreta.");
         }
         session = { id: existing.id, email: data.customer_email, name: data.customer_name, role: "customer" };
@@ -366,7 +366,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         ).run(
           customerId,
           data.customer_email,
-          hashPassword(data.customer_password || crypto.randomBytes(24).toString("base64url")),
+          hashPassword(data.account_secret || crypto.randomBytes(24).toString("base64url")),
           data.customer_name,
           new Date().toISOString(),
         );
