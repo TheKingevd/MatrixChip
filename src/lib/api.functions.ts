@@ -346,7 +346,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
 
       const { hashPassword, verifyPassword } = await import("@/server/db");
       const existing = db
-        .prepare("SELECT id, password_hash, role FROM users WHERE LOWER(email) = LOWER(?)")
+        .prepare("SELECT id, email, name, password_hash, role FROM users WHERE LOWER(email) = LOWER(?)")
         .get(data.customer_email) as
         | { id: string; password_hash: string; role: string }
         | undefined;
