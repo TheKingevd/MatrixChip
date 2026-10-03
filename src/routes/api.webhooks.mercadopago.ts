@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/webhooks/mercadopago")({
           return Response.json({ error: "invalid signature" }, { status: 401 });
         }
 
-        const manifest = \`id:\${dataId};request-id:\${requestId};ts:\${signature.ts};\`;
+        const manifest = `id:${dataId};request-id:${requestId};ts:${signature.ts};`;
         const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
         const a = Buffer.from(expected, "utf8");
         const b = Buffer.from(signature.v1, "utf8");
@@ -48,8 +48,8 @@ export const Route = createFileRoute("/api/webhooks/mercadopago")({
         if (!token) return Response.json({ error: "gateway not configured" }, { status: 503 });
 
         const response = await fetch(
-          \`https://api.mercadopago.com/v1/payments/\${encodeURIComponent(paymentId)}\`,
-          { headers: { Authorization: \`Bearer \${token}\`, Accept: "application/json" } },
+          `https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`,
+          { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
         );
 
         if (!response.ok) return Response.json({ error: "gateway lookup failed" }, { status: 502 });
