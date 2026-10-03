@@ -2,11 +2,11 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { updateSettingsServerFn } from "@/lib/api.functions";
+import { getAdminSettingsServerFn, testPaymentGatewayServerFn, updateSettingsServerFn } from "@/lib/api.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSettings } from "@/lib/catalog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/admin/config")({
   component: ConfigPage,
@@ -35,7 +35,10 @@ const schema = z.object({
 });
 
 function ConfigPage() {
-  const { data, isLoading } = useSettings();
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin_settings"],
+    queryFn: () => getAdminSettingsServerFn(),
+  });
   const qc = useQueryClient();
   const [phone, setPhone] = useState("");
   const [brand, setBrand] = useState("");
@@ -48,6 +51,14 @@ function ConfigPage() {
   const [pixBank, setPixBank] = useState("");
   const [payLink, setPayLink] = useState("");
   const [pixToLink, setPixToLink] = useState("");
+  const [paymentProvider, setPaymentProvider] = useState<"asaas" | "mercadopago">("asaas");
+  const [asaasToken, setAsaasToken] = useState("");
+  const [asaasApiUrl, setAsaasApiUrl] = useState("https://api.asaas.com");
+  const [asaasWebhookToken, setAsaasWebhookToken] = useState("");
+  const [mercadoPagoToken, setMercadoPagoToken] = useState("");
+  const [mercadoPagoWebhookSecret, setMercadoPagoWebhookSecret] = useState("");
+  const [publicAppUrl, setPublicAppUrl] = useState("");
+  const [testingGateway, setTestingGateway] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -64,12 +75,39 @@ function ConfigPage() {
     setPixBank(data["pix_bank"] ?? "");
     setPayLink(data["payment_link"] ?? "");
     setPixToLink(data["pixto_link"] ?? "");
+    setPaymentProvider((data["payment_provider"] === "mercadopago" ? "mercadopago" : "asaas"));
+    setAsaasToken(data["asaas_access_token"] ?? "");
+    setAsaasApiUrl(data["asaas_api_url"] ?? "https://api.asaas.com");
+    setAsaasWebhookToken(data["asaas_webhook_token"] ?? "");
+    setMercadoPagoToken(data["mercadopago_access_token"] ?? "");
+    setMercadoPagoWebhookSecret(data["mercadopago_webhook_secret"] ?? "");
+    setPublicAppUrl(data["public_app_url"] ?? "");
   }, [data]);
+
+  const testGateway = async () => {
+    setTestingGateway(true);
+    try {
+      await testPaymentGatewayServerFn({ data: { provider: paymentProvider } });
+      setMsg({ ok: true, text: `${paymentProvider === "asaas" ? "Asaas" : "Mercado Pago"} respondeu corretamente. Token válido.` });
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Não foi possível testar o gateway." });
+    } finally {
+      setTestingGateway(false);
+    }
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
-    const parsed = schema.safeParse({
+    const parsed = schema.extend({
+    payment_provider: z.enum(["asaas", "mercadopago"]),
+    asaas_access_token: z.string().max(500),
+    asaas_api_url: z.string().max(300),
+    asaas_webhook_token: z.string().max(500),
+    mercadopago_access_token: z.string().max(500),
+    mercadopago_webhook_secret: z.string().max(500),
+    public_app_url: z.string().max(300),
+  }).safeParse({
       support_phone: phone,
       brand_name: brand,
       hero_note: note,
@@ -80,6 +118,13 @@ function ConfigPage() {
       pix_bank: pixBank,
       payment_link: payLink,
       pixto_link: pixToLink,
+      payment_provider: paymentProvider,
+      asaas_access_token: asaasToken,
+      asaas_api_url: asaasApiUrl,
+      asaas_webhook_token: asaasWebhookToken,
+      mercadopago_access_token: mercadoPagoToken,
+      mercadopago_webhook_secret: mercadoPagoWebhookSecret,
+      public_app_url: publicAppUrl,
     });
     if (!parsed.success) {
       setMsg({ ok: false, text: parsed.error.issues[0]!.message });
@@ -98,6 +143,13 @@ function ConfigPage() {
       { key: "pix_bank", value: parsed.data.pix_bank },
       { key: "payment_link", value: parsed.data.payment_link },
       { key: "pixto_link", value: parsed.data.pixto_link },
+      { key: "payment_provider", value: parsed.data.payment_provider },
+      { key: "asaas_access_token", value: parsed.data.asaas_access_token },
+      { key: "asaas_api_url", value: parsed.data.asaas_api_url },
+      { key: "asaas_webhook_token", value: parsed.data.asaas_webhook_token },
+      { key: "mercadopago_access_token", value: parsed.data.mercadopago_access_token },
+      { key: "mercadopago_webhook_secret", value: parsed.data.mercadopago_webhook_secret },
+      { key: "public_app_url", value: parsed.data.public_app_url },
     ];
     try {
       await updateSettingsServerFn({ data: rows });
@@ -191,6 +243,56 @@ function ConfigPage() {
             </p>
           </div>
         </div>
+        <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <div>
+            <Label>Gateway de pagamento PIX</Label>
+            <p className="text-xs text-muted-foreground">
+              Essas credenciais ficam no servidor e não são expostas para visitantes. Você pode testar o token antes de usar o checkout.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="payment-provider">Gateway ativo</Label>
+              <select id="payment-provider" value={paymentProvider} onChange={(e) => setPaymentProvider(e.target.value as "asaas" | "mercadopago")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <option value="asaas">Asaas</option>
+                <option value="mercadopago">Mercado Pago</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="public-url">URL pública do site</Label>
+              <Input id="public-url" value={publicAppUrl} onChange={(e) => setPublicAppUrl(e.target.value)} placeholder="https://seudominio.com.br" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="asaas-token">Token Asaas</Label>
+            <Input id="asaas-token" type="password" value={asaasToken} onChange={(e) => setAsaasToken(e.target.value)} placeholder="Cole o access token do Asaas" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="asaas-url">URL da API Asaas</Label>
+              <Input id="asaas-url" value={asaasApiUrl} onChange={(e) => setAsaasApiUrl(e.target.value)} placeholder="https://api.asaas.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="asaas-webhook">Token do webhook Asaas</Label>
+              <Input id="asaas-webhook" type="password" value={asaasWebhookToken} onChange={(e) => setAsaasWebhookToken(e.target.value)} placeholder="Token configurado no webhook" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="mp-token">Access Token Mercado Pago</Label>
+            <Input id="mp-token" type="password" value={mercadoPagoToken} onChange={(e) => setMercadoPagoToken(e.target.value)} placeholder="Cole o access token do Mercado Pago" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="mp-webhook">Secret do webhook Mercado Pago</Label>
+            <Input id="mp-webhook" type="password" value={mercadoPagoWebhookSecret} onChange={(e) => setMercadoPagoWebhookSecret(e.target.value)} placeholder="Webhook secret / assinatura" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => void testGateway()} disabled={testingGateway}>
+              {testingGateway ? "Testando..." : `Testar ${paymentProvider === "asaas" ? "Asaas" : "Mercado Pago"}`}
+            </Button>
+            <span className="self-center text-xs text-muted-foreground">Salve primeiro se acabou de alterar o token.</span>
+          </div>
+        </div>
+
         <div className="space-y-3 rounded-xl border border-border/70 bg-background/40 p-4">
           <div>
             <Label htmlFor="pix-key">Pagamento via PIX</Label>
