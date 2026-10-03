@@ -113,16 +113,16 @@ export function Index() {
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* HEADER MATRIX ONLINE */}
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4">
           <a href="#top" className="flex items-center gap-2.5">
             <span className="grid size-9 place-items-center rounded-xl bg-brand-gradient text-primary-foreground shadow-glow">
               <Zap className="size-5 fill-current" />
             </span>
             <div className="flex flex-col">
-              <span className="font-display text-xl font-black tracking-tight text-foreground">
+              <span className="font-display text-base font-black tracking-tight text-foreground sm:text-xl">
                 MATRIX <span className="text-primary">ONLINE</span>
               </span>
-              <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+              <span className="hidden text-[10px] font-medium tracking-widest text-muted-foreground uppercase sm:block">
                 Chips Físicos & Conexão
               </span>
             </div>
@@ -138,7 +138,7 @@ export function Index() {
               Perguntas frequentes
             </a>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <a
               href="/conta"
               className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline"
@@ -147,7 +147,7 @@ export function Index() {
             </a>
             <Button asChild size="sm" className="btn-pop shadow-glow">
               <a href={buildWhatsAppLink("Olá Matrix Online! Gostaria de tirar dúvidas sobre os chips físicos.")}>
-                <WhatsAppIcon className="mr-1.5 size-5 shrink-0" /> Suporte WhatsApp
+                <WhatsAppIcon className="size-5 shrink-0 sm:mr-1.5" /> <span className="hidden sm:inline">Suporte WhatsApp</span>
               </a>
             </Button>
           </div>
@@ -167,18 +167,18 @@ export function Index() {
             className="pointer-events-none absolute inset-0 size-full object-cover opacity-35 mix-blend-screen"
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/70 via-background/40 to-background" />
-          <div className="relative mx-auto max-w-6xl px-5 py-20 md:py-28">
+          <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-5 sm:py-20 md:py-28">
             <Badge variant="secondary" className="mb-6 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary">
               <Truck className="mr-1.5 size-3.5" /> Envio rápido para todo o Brasil · Chips Físicos Reais
             </Badge>
-            <h1 className="max-w-3xl text-4xl font-extrabold leading-[1.08] md:text-6xl">
+            <h1 className="max-w-3xl text-3xl font-extrabold leading-[1.08] sm:text-4xl md:text-6xl">
               Seu <span className="text-brand-gradient">Chip Físico</span> dedicado entregue na sua porta
             </h1>
-            <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
               Compre chips físicos reais para WhatsApp, WhatsApp Business, SMS e voz. Escolha seu DDD
               preferido do Brasil ou chips internacionais de mais de 190 países com entrega direta na sua residência.
             </p>
-            <div className="mt-9 flex flex-wrap gap-3">
+            <div className="mt-7 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:flex-wrap sm:gap-3">
               <Button asChild size="lg" className="btn-pop shadow-glow">
                 <a href="#chips">
                   <Package className="mr-2 size-5" /> Ver chips disponíveis
@@ -189,7 +189,7 @@ export function Index() {
               </Button>
             </div>
 
-            <dl className="mt-14 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <dl className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:mt-14 md:grid-cols-4">
               {[
                 { k: "100% Físicos", v: "Chips reais e lacrados" },
                 { k: "Todos os DDDs", v: "Do 11 ao 99 no Brasil" },
@@ -200,7 +200,7 @@ export function Index() {
                   key={s.k}
                   className="neon-card heartbeat-glow rounded-2xl border bg-card/60 p-4 transition-transform hover:-translate-y-1"
                 >
-                  <dt className="font-display text-2xl font-bold text-foreground">{s.k}</dt>
+                  <dt className="font-display text-xl font-bold text-foreground sm:text-2xl">{s.k}</dt>
                   <dd className="text-xs text-muted-foreground">{s.v}</dd>
                 </div>
               ))}
@@ -209,7 +209,7 @@ export function Index() {
         </section>
 
         {/* VITRINE DE CHIPS */}
-        <section id="chips" className="mx-auto max-w-6xl px-5 py-20">
+        <section id="chips" className="mx-auto max-w-6xl px-4 py-14 sm:px-5 sm:py-20">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <h2 className="text-3xl font-bold md:text-4xl text-foreground">Catálogo de Chips Físicos</h2>
@@ -219,7 +219,7 @@ export function Index() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col gap-4">
+          <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:gap-4">
             <div className="relative max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -259,7 +259,7 @@ export function Index() {
           </div>
 
           {/* GRID DE CARDS */}
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((c) => (
               <article
                 key={c.code}
@@ -318,7 +318,7 @@ export function Index() {
                   </div>
                 )}
 
-                <div className="mt-6 flex items-end justify-between gap-3 border-t border-border/60 pt-4">
+                <div className="mt-6 flex flex-col items-stretch gap-3 border-t border-border/60 pt-4">
                   <div>
                     <p className="text-[11px] text-muted-foreground">Preço do chip</p>
                     <p className="font-display text-2xl font-black text-foreground">
@@ -396,7 +396,7 @@ export function Index() {
         <PixPayment />
 
         {/* PERGUNTAS FREQUENTES */}
-        <section id="faq" className="mx-auto max-w-3xl px-5 py-20">
+        <section id="faq" className="mx-auto max-w-3xl px-4 py-14 sm:px-5 sm:py-20">
           <h2 className="text-3xl font-bold md:text-4xl text-center text-foreground">
             Perguntas Frequentes
           </h2>
@@ -437,7 +437,7 @@ export function Index() {
 
         {/* CTA FINAL */}
         <section className="mx-auto max-w-6xl px-5 pb-24">
-          <div className="hero-bg rounded-3xl border border-border/70 p-10 text-center shadow-glow">
+          <div className="hero-bg rounded-3xl border border-border/70 p-5 text-center shadow-glow sm:p-10">
             <h2 className="text-3xl font-bold md:text-4xl text-foreground">
               Pronto para garantir seu Chip Físico?
             </h2>
