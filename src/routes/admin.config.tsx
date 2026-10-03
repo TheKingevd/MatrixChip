@@ -25,12 +25,6 @@ const schema = z.object({
     .int("Use segundos inteiros")
     .min(3, "Mínimo de 3 segundos")
     .max(600, "Máximo de 600 segundos"),
-  pix_key: z.string().trim().max(120),
-  pix_key_type: z.string().trim().max(30),
-  pix_holder: z.string().trim().max(80),
-  pix_bank: z.string().trim().max(60),
-  payment_link: z.string().trim().max(300),
-  pixto_link: z.string().trim().max(300),
 });
 
 function ConfigPage() {
@@ -80,7 +74,7 @@ function ConfigPage() {
     setMsg(null);
     const parsed = schema.extend({
     payment_provider: z.enum(["asaas", "mercadopago"]),
-    gateway_token: z.string().trim().min(1).max(1000),
+    gateway_token: z.string().max(1000),
     payment_minimum: z.number().min(0.01).max(1000000),
   }).safeParse({
       support_phone: phone,
