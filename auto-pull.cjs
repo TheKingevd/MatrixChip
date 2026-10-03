@@ -109,7 +109,7 @@ async function verificarGitHub() {
             try {
                 const arquivosAlterados = await executar("git diff --name-only ORIG_HEAD HEAD");
                 const precisaInstalarDependencias =
-                    /(^|\\n)(package\\.json|package-lock\\.json)(\\n|$)/.test(
+                    /(^|\n)(package\.json|package-lock\.json)(\n|$)/.test(
                         arquivosAlterados.stdout
                     );
 
