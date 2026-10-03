@@ -134,6 +134,8 @@ db.exec(`
     tracking_code TEXT,
     notes TEXT,
     seller_id TEXT,
+    seller_commission_percent REAL,
+    seller_commission_amount REAL,
     created_by TEXT,
     customer_id TEXT,
     mp_payment_id TEXT,
@@ -153,7 +155,9 @@ db.exec(`
     note TEXT,
     paid_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE CASCADE
+    created_by TEXT,
+    FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
   );
 `);
 
@@ -179,6 +183,9 @@ addColumnIfMissing("sales", "payment_provider", "TEXT");
 addColumnIfMissing("sales", "payment_external_id", "TEXT");
 addColumnIfMissing("sales", "pix_payload", "TEXT");
 addColumnIfMissing("sales", "pix_expires_at", "TEXT");
+addColumnIfMissing("sales", "seller_commission_percent", "REAL");
+addColumnIfMissing("sales", "seller_commission_amount", "REAL");
+addColumnIfMissing("seller_payouts", "created_by", "TEXT");
 
 // Funções utilitárias de hash de senha
 export function hashPassword(password: string): string {
