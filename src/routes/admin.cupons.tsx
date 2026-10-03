@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, WandSparkles } from "lucide-react";
 import { saveCouponServerFn, deleteCouponServerFn } from "@/lib/api.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,12 @@ function CuponsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY);
   const set = (k: keyof typeof EMPTY, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
+  const generateCode = () => {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const bytes = crypto.getRandomValues(new Uint8Array(8));
+    const code = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+    set("code", `MATRIX-${code}`);
+  };
 
   const countryName = (code: string) => catalog.find((c) => c.code === code)?.name;
 
@@ -103,7 +109,7 @@ function CuponsPage() {
         className="mt-6 grid gap-4 rounded-2xl border border-border/70 bg-card p-6 sm:grid-cols-2 lg:grid-cols-3"
       >
         <div className="space-y-1.5">
-          <Label htmlFor="ccode">Código do cupom</Label>
+          <div className="flex items-center justify-between gap-2"><Label htmlFor="ccode">Código do cupom</Label><Button type="button" size="sm" variant="outline" onClick={generateCode}><WandSparkles className="mr-1.5 size-4" /> Gerar</Button></div>
           <Input
             id="ccode"
             value={form.code}
