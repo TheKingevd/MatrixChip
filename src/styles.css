@@ -1,0 +1,280 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system definition.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and .dark blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.9rem;
+  --background: oklch(0.16 0.028 172);
+  --foreground: oklch(0.97 0.012 160);
+  --surface: oklch(0.21 0.032 172);
+  --surface-2: oklch(0.25 0.036 172);
+  --card: oklch(0.21 0.032 172);
+  --card-foreground: oklch(0.97 0.012 160);
+  --popover: oklch(0.21 0.032 172);
+  --popover-foreground: oklch(0.97 0.012 160);
+  --primary: oklch(0.79 0.19 148);
+  --primary-foreground: oklch(0.17 0.05 155);
+  --secondary: oklch(0.27 0.038 172);
+  --secondary-foreground: oklch(0.95 0.012 160);
+  --muted: oklch(0.25 0.03 172);
+  --muted-foreground: oklch(0.72 0.026 168);
+  --accent: oklch(0.72 0.15 195);
+  --accent-foreground: oklch(0.16 0.04 190);
+  --destructive: oklch(0.62 0.21 25);
+  --destructive-foreground: oklch(0.98 0.01 160);
+  --border: oklch(0.32 0.03 172);
+  --input: oklch(0.3 0.03 172);
+  --ring: oklch(0.79 0.19 148);
+
+  --gradient-hero: radial-gradient(
+      1000px 520px at 12% -10%,
+      oklch(0.79 0.19 148 / 0.22),
+      transparent 60%
+    ),
+    radial-gradient(760px 440px at 92% 8%, oklch(0.72 0.15 195 / 0.18), transparent 60%);
+  --gradient-brand: linear-gradient(120deg, oklch(0.85 0.19 150), oklch(0.72 0.15 195));
+  --shadow-glow: 0 24px 70px -28px oklch(0.79 0.19 148 / 0.55);
+  --shadow-card: 0 18px 44px -30px oklch(0 0 0 / 0.9);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+@utility hero-bg {
+  background-image: var(--gradient-hero);
+}
+
+@utility text-brand-gradient {
+  background-image: var(--gradient-brand);
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-brand-gradient {
+  background-image: var(--gradient-brand);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@keyframes neon-shift {
+  0%,
+  100% {
+    border-color: oklch(0.79 0.19 148 / 0.9);
+    box-shadow:
+      0 0 18px -4px oklch(0.79 0.19 148 / 0.6),
+      inset 0 0 14px -8px oklch(0.79 0.19 148 / 0.5);
+  }
+  33% {
+    border-color: oklch(0.72 0.15 195 / 0.9);
+    box-shadow:
+      0 0 18px -4px oklch(0.72 0.15 195 / 0.6),
+      inset 0 0 14px -8px oklch(0.72 0.15 195 / 0.5);
+  }
+  66% {
+    border-color: oklch(0.75 0.17 320 / 0.9);
+    box-shadow:
+      0 0 18px -4px oklch(0.75 0.17 320 / 0.55),
+      inset 0 0 14px -8px oklch(0.75 0.17 320 / 0.45);
+  }
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    box-shadow: 0 0 10px -4px oklch(0.79 0.19 148 / 0.4);
+  }
+  14% {
+    box-shadow:
+      0 0 22px -2px oklch(0.79 0.19 148 / 0.85),
+      0 0 40px -6px oklch(0.72 0.15 195 / 0.5);
+  }
+  28% {
+    box-shadow: 0 0 10px -4px oklch(0.79 0.19 148 / 0.4);
+  }
+  42% {
+    box-shadow:
+      0 0 26px -2px oklch(0.75 0.17 320 / 0.8),
+      0 0 46px -8px oklch(0.79 0.19 148 / 0.5);
+  }
+  70% {
+    box-shadow: 0 0 10px -4px oklch(0.79 0.19 148 / 0.4);
+  }
+}
+
+@utility heartbeat-glow {
+  position: relative;
+
+  /* The pulsing "light" lives on a pseudo-element so only opacity animates
+     (compositor-only, cheap on mobile — no box-shadow repaints) */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      0 0 22px -2px oklch(0.79 0.19 148 / 0.75),
+      0 0 44px -6px oklch(0.72 0.15 195 / 0.45);
+    opacity: 0;
+    animation: heartbeat-fade 1.6s ease-in-out infinite;
+  }
+
+  /* Ao passar o mouse: pulsa em outra cor (magenta/ciano) e mais rápido */
+  @media (hover: hover) {
+    &:hover::after {
+      box-shadow:
+        0 0 26px 0 oklch(0.75 0.24 320 / 0.9),
+        0 0 54px -4px oklch(0.72 0.19 195 / 0.6);
+      animation:
+        heartbeat-fade 0.9s ease-in-out infinite,
+        hover-hue 2.4s linear infinite;
+    }
+
+    &:hover {
+      border-color: oklch(0.75 0.24 320 / 0.9);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      animation: none;
+      opacity: 0.35;
+    }
+  }
+}
+
+@keyframes hover-hue {
+  0%,
+  100% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(60deg);
+  }
+}
+
+@keyframes heartbeat-fade {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  14% {
+    opacity: 1;
+  }
+  28% {
+    opacity: 0.15;
+  }
+  42% {
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.12;
+  }
+}
+
+@utility neon-card {
+  /* Static glow by default (cheap: single paint, no per-frame repaints) */
+  border-color: oklch(0.79 0.19 148 / 0.55);
+  box-shadow: 0 0 14px -6px oklch(0.79 0.19 148 / 0.45);
+
+  /* Animated neon only on devices with a real pointer and enough screen
+     (desktops) — on mobile this avoids repainting ~245 cards every frame */
+  @media (hover: hover) and (min-width: 768px) {
+    animation: neon-shift 4s ease-in-out infinite;
+  }
+
+  /* Respect users who ask for less motion */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility btn-pop {
+  transition:
+    transform 160ms ease,
+    box-shadow 200ms ease,
+    filter 200ms ease;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-2px) scale(1.03);
+    filter: brightness(1.1);
+    box-shadow: 0 10px 26px -10px oklch(0.79 0.19 148 / 0.6);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+}
+

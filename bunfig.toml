@@ -1,0 +1,7 @@
+[install]
+saveTextLockfile = true
+# 24h supply-chain guard: skip package versions published less than a day ago.
+minimumReleaseAge = 86400
+# Cada entrada aqui libera um pacote do bloqueio de 24h — confirme com o
+# usuário antes de adicionar qualquer um.
+minimumReleaseAgeExcludes = []
