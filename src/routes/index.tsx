@@ -4,7 +4,6 @@ import {
   Check,
   Globe2,
   MapPin,
-  MessageCircle,
   Package,
   Search,
   ShieldCheck,
@@ -142,7 +141,7 @@ export function Index() {
           <div className="flex items-center gap-3">
             <Button asChild size="sm" className="btn-pop shadow-glow">
               <a href={buildWhatsAppLink("Olá Matrix Online! Gostaria de tirar dúvidas sobre os chips físicos.")}>
-                <MessageCircle className="mr-1.5 size-4" /> Suporte WhatsApp
+                <WhatsAppIcon className="mr-1.5 size-5 shrink-0" /> Suporte WhatsApp
               </a>
             </Button>
           </div>
@@ -441,7 +440,7 @@ export function Index() {
             </p>
             <Button asChild size="lg" className="btn-pop mt-8 shadow-glow">
               <a href={buildWhatsAppLink("Olá! Gostaria de pedir um chip físico pelo Matrix Online.")}>
-                <MessageCircle className="mr-2 size-5" /> Falar com um consultor
+                <WhatsAppIcon className="mr-2 size-5 shrink-0" /> Falar com um consultor
               </a>
             </Button>
           </div>
