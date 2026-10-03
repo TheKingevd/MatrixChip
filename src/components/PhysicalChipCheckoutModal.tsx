@@ -285,7 +285,7 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
         {step === "form" && (
           <div className="space-y-6 pt-2">
             {/* Card do Produto Selecionado */}
-            <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <div className="flex flex-col items-stretch gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
               <div className="flex items-center gap-3">
                 <Flag code={item.code} name={item.name} className="h-8 w-11 rounded shadow-sm" />
                 <div>
@@ -297,7 +297,7 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
                   </p>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <span className="font-mono text-lg font-bold text-primary">
                   {formatBRL(unitPrice)}
                 </span>
@@ -548,7 +548,7 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
                   <img
                     src={orderResult.payment.qrCodeDataUrl}
                     alt="QR Code PIX do pedido"
-                    className="size-56 sm:size-64"
+                    className="size-48 max-w-full sm:size-64"
                   />
                 </div>
                 <div className="text-center">
