@@ -501,6 +501,25 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     const shippingCost = 0; // frete grátis
     const total = Math.max(0, subtotal - discount);
 
+    // A comissão é definida no servidor no momento da venda.
+    // O navegador nunca informa a porcentagem da comissão.
+    let sellerCommissionPercent: number | null = null;
+    let sellerCommissionAmount: number | null = null;
+    if (isAdmin && data.seller_id) {
+      const seller = db
+        .prepare("SELECT id, commission_percent, active FROM sellers WHERE id = ?")
+        .get(data.seller_id) as
+        | { id: string; commission_percent: number; active: number }
+        | undefined;
+
+      if (!seller) throw new Error("Vendedor não encontrado.");
+      if (seller.active !== 1) throw new Error("O vendedor selecionado está inativo.");
+
+      sellerCommissionPercent = Number(seller.commission_percent) || 0;
+      sellerCommissionAmount =
+        Math.round((total * sellerCommissionPercent + Number.EPSILON) * 100) / 100;
+    }
+
     if (!isAdmin) {
       const minimumRow = db.prepare("SELECT value FROM app_settings WHERE key = 'payment_minimum'").get() as { value?: string } | undefined;
       const minimum = Number(minimumRow?.value ?? process.env["PAYMENT_MINIMUM"] ?? 1);
@@ -553,13 +572,14 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         customer_name, customer_phone, customer_cpf, customer_email,
         cep, street, number, complement, neighborhood, city, state,
         number_type, delivery, quantity, unit_price, discount, shipping_cost, total,
-        coupon_code, coupon_percent, payment_method, pix_status, status, notes, seller_id, customer_id
+        coupon_code, coupon_percent, payment_method, pix_status, status, notes,
+        seller_id, seller_commission_percent, seller_commission_amount, customer_id
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, 'aguardando', ?, ?, ?, ?
+        ?, ?, ?, 'aguardando', ?, ?, ?, ?, ?, ?
       )
     `);
 
@@ -595,6 +615,8 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       isAdmin ? data.status || "pendente" : "pendente",
       isAdmin ? data.notes || null : null,
       isAdmin ? data.seller_id || null : null,
+      sellerCommissionPercent,
+      sellerCommissionAmount,
       session?.id ?? null,
     );
 
