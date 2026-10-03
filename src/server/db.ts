@@ -214,12 +214,8 @@ if (countResult.count === 0) {
     ["hero_note", "Chips Físicos com Entrega Rápida em todo o Brasil!"],
     ["ticker_enabled", "on"],
     ["ticker_interval", "15"],
-    ["pix_key", "matrix@pix.com.br"],
-    ["pix_key_type", "E-mail"],
-    ["pix_holder", "Matrix Online Telecom"],
-    ["pix_bank", "Banco Inter"],
-    ["payment_link", ""],
-    ["pixto_link", ""],
+    ["payment_provider", "asaas"],
+    ["payment_minimum", "1"],
   ];
 
   for (const [k, v] of defaultSettings) {
