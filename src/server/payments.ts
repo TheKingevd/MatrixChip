@@ -12,12 +12,30 @@ export type PixCharge = {
   expiresAt?: string | null;
 };
 
+function getPaymentSettings() {
+  try {
+    const { db } = require("./db") as typeof import("./db");
+    const rows = db.prepare(
+      "SELECT key, value FROM app_settings WHERE key IN ('payment_provider','asaas_access_token','asaas_api_url','mercadopago_access_token','public_app_url')",
+    ).all() as { key: string; value: string }[];
+    return Object.fromEntries(rows.map((row) => [row.key, row.value])) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
 function provider(): PaymentProvider {
-  const value = (process.env["PAYMENT_PROVIDER"] || "asaas").trim().toLowerCase();
+  const settings = getPaymentSettings();
+  const value = (settings["payment_provider"] || process.env["PAYMENT_PROVIDER"] || "asaas").trim().toLowerCase();
   if (value !== "asaas" && value !== "mercadopago") {
     throw new Error('PAYMENT_PROVIDER deve ser "asaas" ou "mercadopago".');
   }
   return value;
+}
+
+function settingOrEnv(settingsKey: string, envKey: string) {
+  const settings = getPaymentSettings();
+  return settings[settingsKey]?.trim() || process.env[envKey]?.trim() || "";
 }
 
 async function apiJson(url: string, init: RequestInit, providerName: string) {
@@ -60,10 +78,10 @@ async function createAsaasCharge(input: {
   phone: string;
   total: number;
 }): Promise<PixCharge> {
-  const token = process.env["ASAAS_ACCESS_TOKEN"]?.trim();
+  const token = settingOrEnv("asaas_access_token", "ASAAS_ACCESS_TOKEN");
   if (!token) throw new Error("ASAAS_ACCESS_TOKEN não configurado no .env.");
 
-  const base = (process.env["ASAAS_API_URL"] || "https://api.asaas.com").replace(/\/$/, "");
+  const base = (settingOrEnv("asaas_api_url", "ASAAS_API_URL") || "https://api.asaas.com").replace(/\/$/, "");
   const headers = {
     accept: "application/json",
     "content-type": "application/json",
@@ -136,7 +154,7 @@ async function createMercadoPagoCharge(input: {
   cpf: string;
   total: number;
 }): Promise<PixCharge> {
-  const token = process.env["MERCADOPAGO_ACCESS_TOKEN"]?.trim();
+  const token = settingOrEnv("mercadopago_access_token", "MERCADOPAGO_ACCESS_TOKEN");
   if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado no .env.");
 
   const { firstName, lastName } = splitName(input.name);
@@ -157,8 +175,8 @@ async function createMercadoPagoCharge(input: {
         description: \`Matrix Online - Pedido \${input.orderId}\`,
         payment_method_id: "pix",
         external_reference: input.orderId,
-        ...(process.env["PUBLIC_APP_URL"] ? {
-          notification_url: `${process.env["PUBLIC_APP_URL"].replace(/\/$/, "")}/api/webhooks/mercadopago`,
+        ...((settingOrEnv("public_app_url", "PUBLIC_APP_URL")) ? {
+          notification_url: `${settingOrEnv("public_app_url", "PUBLIC_APP_URL").replace(/\/$/, "")}/api/webhooks/mercadopago`,
         } : {}),
         payer: {
           email: input.email,
