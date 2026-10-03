@@ -29,6 +29,7 @@ export type SellerPayout = {
   amount: number;
   note: string | null;
   paid_at: string;
+  seller_name?: string;
 };
 
 export type SellerSale = {
