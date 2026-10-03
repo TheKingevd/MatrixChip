@@ -1,8 +1,8 @@
 ﻿import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, FileImage, Upload, XCircle } from "lucide-react";
+import { CheckCircle2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Flag } from "@/components/Flag";
 import { formatBRL } from "@/lib/catalog";
@@ -10,7 +10,6 @@ import { productLabel } from "@/lib/sales-status";
 import {
   getSalesServerFn,
   updatePixStatusServerFn,
-  uploadReceiptServerFn,
 } from "@/lib/api.functions";
 
 export const Route = createFileRoute("/admin/pix")({
@@ -19,7 +18,6 @@ export const Route = createFileRoute("/admin/pix")({
 
 const PIX_STATUSES = [
   { value: "aguardando", label: "Aguardando", color: "#eab308" },
-  { value: "comprovante_enviado", label: "Comprovante enviado", color: "#38bdf8" },
   { value: "confirmado", label: "Confirmado", color: "#22c55e" },
 ] as const;
 
@@ -37,15 +35,12 @@ type SaleRow = {
   total: number;
   pix_status: string;
   pix_confirmed_at: string | null;
-  receipt_path: string | null;
 };
 
 function PixEnviosPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState("todos");
-  const [receiptUrl, setReceiptUrl] = useState<{ url: string; name: string } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploadTarget, setUploadTarget] = useState<string | null>(null);
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["sales", "pix"],
@@ -70,34 +65,7 @@ function PixEnviosPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const uploadReceipt = useMutation({
-    mutationFn: async ({ id, file }: { id: string; file: File }) => {
-      // Converte o arquivo para Data URL e salva no SQLite
-      const reader = new FileReader();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
 
-      await uploadReceiptServerFn({
-        data: {
-          id,
-          receipt_data_url: dataUrl,
-        },
-      });
-    },
-    onSuccess: () => {
-      toast.success("Comprovante anexado — status marcado como enviado");
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const viewReceipt = (sale: SaleRow) => {
-    if (!sale.receipt_path) return;
-    setReceiptUrl({ url: sale.receipt_path, name: sale.customer_name });
-  };
 
   const rows = (data ?? []).filter((r) => filter === "todos" || r.pix_status === filter);
 
@@ -105,7 +73,7 @@ function PixEnviosPage() {
     <div>
       <h1 className="font-display text-2xl font-bold">Envios e Comprovantes PIX</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Acompanhe os pagamentos PIX recebidos para chips físicos, anexe comprovantes e confirme o pagamento.
+        Pagamentos são confirmados exclusivamente pelo Asaas ou Mercado Pago. O painel apenas consulta o gateway.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -125,18 +93,7 @@ function PixEnviosPage() {
         ))}
       </div>
 
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*,application/pdf"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file && uploadTarget) uploadReceipt.mutate({ id: uploadTarget, file });
-          e.target.value = "";
-          setUploadTarget(null);
-        }}
-      />
+
 
       <div className="mt-6 space-y-4">
         {rows.map((r) => {
@@ -173,42 +130,20 @@ function PixEnviosPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={uploadReceipt.isPending}
-                    onClick={() => {
-                      setUploadTarget(r.id);
-                      fileRef.current?.click();
-                    }}
-                  >
-                    <Upload className="mr-2 size-4" />
-                    {r.receipt_path ? "Trocar comprovante" : "Anexar comprovante"}
-                  </Button>
-                  {r.receipt_path && (
-                    <Button size="sm" variant="outline" onClick={() => viewReceipt(r)}>
-                      <FileImage className="mr-2 size-4" /> Ver comprovante
-                    </Button>
-                  )}
                   {r.pix_status !== "confirmado" ? (
                     <Button
                       size="sm"
                       disabled={setStatus.isPending}
-                      onClick={() => setStatus.mutate({ id: r.id, value: "confirmado" })}
+                      onClick={() => setStatus.mutate({ id: r.id, value: "verificar" })}
                     >
-                      <CheckCircle2 className="mr-2 size-4" /> Confirmar pagamento
+                      <RefreshCw className="mr-2 size-4" /> Verificar no gateway
                     </Button>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={setStatus.isPending}
-                      onClick={() => setStatus.mutate({ id: r.id, value: "aguardando" })}
-                    >
-                      <XCircle className="mr-2 size-4" /> Desfazer confirmação
-                    </Button>
+                    <span className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
+                      <CheckCircle2 className="mr-2 size-4" /> Pagamento confirmado pelo gateway
+                    </span>
                   )}
-                </div>
+                </div>/div>
               </div>
             </div>
           );
@@ -220,30 +155,6 @@ function PixEnviosPage() {
         )}
       </div>
 
-      {receiptUrl && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-5"
-          onClick={() => setReceiptUrl(null)}
-        >
-          <div
-            className="max-h-[85vh] max-w-2xl overflow-auto rounded-2xl border border-border bg-card p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-medium">Comprovante — {receiptUrl.name}</p>
-              <Button size="sm" variant="outline" onClick={() => setReceiptUrl(null)}>
-                Fechar
-              </Button>
-            </div>
-            {receiptUrl.url.toLowerCase().includes(".pdf") ? (
-              <iframe src={receiptUrl.url} title="Comprovante" className="h-[70vh] w-full rounded-lg" />
-            ) : (
-              <img src={receiptUrl.url} alt="Comprovante PIX" className="max-h-[70vh] rounded-lg" />
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
