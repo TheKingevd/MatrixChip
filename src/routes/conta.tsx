@@ -144,7 +144,7 @@ function CustomerAccount() {
                     <div>
                       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Seu chip</p>
                       <p className="mt-1 font-semibold">Chip Físico {order.country_name}</p>
-                      <p className="text-xs text-muted-foreground">{order.dial}{order.ddd ? \` · DDD \${order.ddd}\` : ""}</p>
+                      <p className="text-xs text-muted-foreground">{order.dial}{order.ddd ? ` · DDD ${order.ddd}` : ""}</p>
                       {order.assigned_number && <p className="mt-1 font-mono text-xs">{order.assigned_number}</p>}
                     </div>
                     <div>
@@ -178,7 +178,7 @@ function CustomerAccount() {
 
                   {order.tracking_code && (
                     <Button variant="outline" size="sm" className="mt-4" asChild>
-                      <a href={\`https://rastreamento.correios.com.br/app/index.php?objeto=\${encodeURIComponent(order.tracking_code)}\`} target="_blank" rel="noreferrer">
+                      <a href={`https://rastreamento.correios.com.br/app/index.php?objeto=${encodeURIComponent(order.tracking_code)}`} target="_blank" rel="noreferrer">
                         <ExternalLink className="mr-1.5 size-4" /> Rastrear Correios
                       </a>
                     </Button>
