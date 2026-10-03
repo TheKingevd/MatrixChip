@@ -33,9 +33,18 @@ function SellerPortal() {
   const { data: payouts } = useMyPayouts();
 
   const totals = useMemo(() => {
-    const mine = (sales ?? []).filter((s) => s.status !== "cancelada");
+    const mine = (sales ?? []).filter((s) =>
+      ["pago", "processando", "entregue"].includes(s.status),
+    );
     const revenue = mine.reduce((a, s) => a + (Number(s.total) || 0), 0);
-    const generated = commissionOf(revenue, Number(seller?.commission_percent ?? 0));
+    const generated = mine.reduce(
+      (a, s) =>
+        a +
+        (s.seller_commission_amount != null
+          ? Number(s.seller_commission_amount)
+          : commissionOf(Number(s.total) || 0, Number(seller?.commission_percent ?? 0))),
+      0,
+    );
     const paid = (payouts ?? []).reduce((a, p) => a + (Number(p.amount) || 0), 0);
     return { count: mine.length, revenue, generated, paid, balance: generated - paid };
   }, [sales, payouts, seller]);
@@ -88,7 +97,7 @@ function SellerPortal() {
 
         {/* CARDS */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi title="Vendas realizadas" value={String(totals.count)} sub="chips vendidos" />
+          <Kpi title="Vendas pagas" value={String(totals.count)} sub="chips vendidos" />
           <Kpi
             title="Faturamento gerado"
             value={formatBRL(totals.revenue)}
