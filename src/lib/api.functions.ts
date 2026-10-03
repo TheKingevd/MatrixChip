@@ -824,20 +824,38 @@ export const updateSaleStatusServerFn = createServerFn({ method: "POST" })
         }
       }
 
-      if (current.seller_id && data.status === "cancelada") {
-        // Não dependemos de valores enviados pelo navegador. Se o cancelamento
-        // faria os repasses já pagos ultrapassarem a comissão disponível, bloqueamos.
+      const commissionableStatuses = new Set(["pago", "processando", "entregue"]);
+      const currentIsCommissionable = commissionableStatuses.has(current.status);
+      const nextIsCommissionable = commissionableStatuses.has(data.status);
+
+      if (current.seller_id && currentIsCommissionable && !nextIsCommissionable) {
+        // Não dependemos de valores enviados pelo navegador. Se a mudança
+        // reduzir a comissão disponível abaixo do que já foi repassado, bloqueamos.
         const financials = sellerFinancials(db, current.seller_id);
         const currentSale = db
-          .prepare("SELECT seller_commission_amount, total, seller_commission_percent FROM sales WHERE id = ?")
+          .prepare(
+            "SELECT seller_commission_amount, total, seller_commission_percent FROM sales WHERE id = ?",
+          )
           .get(data.id) as
-          | { seller_commission_amount: number | null; total: number; seller_commission_percent: number | null }
+          | {
+              seller_commission_amount: number | null;
+              total: number;
+              seller_commission_percent: number | null;
+            }
           | undefined;
-        const saleCommission = currentSale?.seller_commission_amount ??
-          Math.round((Number(currentSale?.total || 0) * Number(currentSale?.seller_commission_percent || 0) + Number.EPSILON) * 100) / 100;
-        const wouldBeBalance = financials.balance - (current.status === "pago" || current.status === "processando" || current.status === "entregue" ? saleCommission : 0);
+        const saleCommission =
+          currentSale?.seller_commission_amount ??
+          Math.round(
+            (Number(currentSale?.total || 0) *
+              Number(currentSale?.seller_commission_percent || 0) +
+              Number.EPSILON) *
+              100,
+          ) / 100;
+        const wouldBeBalance = financials.balance - saleCommission;
         if (wouldBeBalance < -0.0001) {
-          throw new Error("Venda não pode ser cancelada porque parte da comissão já foi repassada.");
+          throw new Error(
+            "A venda não pode sair do status pago/processado porque parte da comissão já foi repassada.",
+          );
         }
       }
 
