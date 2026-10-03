@@ -34,7 +34,6 @@ import { BRAZIL_DDDS } from "@/data/ddd";
 import { formatBRL, useCatalog, useSupportPhone, whatsAppLink } from "@/lib/catalog";
 import { SalesTicker } from "@/components/SalesTicker";
 import { PixPayment } from "@/components/PixPayment";
-import { CouponShowcase } from "@/components/CouponShowcase";
 import {
   PhysicalChipCheckoutModal,
   type CheckoutItem,
@@ -388,9 +387,6 @@ export function Index() {
             </div>
           </div>
         </section>
-
-        {/* CUPONS DE DESCONTO */}
-        <CouponShowcase />
 
         {/* PAGAMENTO PIX DIRETO */}
         <PixPayment />
