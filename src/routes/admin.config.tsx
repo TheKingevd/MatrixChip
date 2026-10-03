@@ -59,7 +59,7 @@ function ConfigPage() {
     setTickerOn((data["ticker_enabled"] ?? "on") !== "off");
     setTickerSecs(data["ticker_interval"] ?? "15");
     setPaymentProvider((data["payment_provider"] === "mercadopago" ? "mercadopago" : "asaas"));
-    setGatewayToken(data[data["payment_provider"] === "mercadopago" ? "mercadopago_access_token" : "asaas_access_token"] ?? "");
+    setGatewayToken("");
     setPaymentMinimum(data["payment_minimum"] ?? "1");
   }, [data]);
 
@@ -103,8 +103,8 @@ function ConfigPage() {
       { key: "ticker_enabled", value: tickerOn ? "on" : "off" },
       { key: "ticker_interval", value: String(parsed.data.ticker_interval) },
       { key: "payment_provider", value: parsed.data.payment_provider },
-      { key: parsed.data.payment_provider === "asaas" ? "asaas_access_token" : "mercadopago_access_token", value: parsed.data.gateway_token },
       { key: "payment_minimum", value: String(parsed.data.payment_minimum) },
+      ...(parsed.data.gateway_token ? [{ key: parsed.data.payment_provider === "asaas" ? "asaas_access_token" : "mercadopago_access_token", value: parsed.data.gateway_token }] : []),
     ];
     try {
       await updateSettingsServerFn({ data: rows });
@@ -211,7 +211,7 @@ function ConfigPage() {
               <select id="payment-provider" value={paymentProvider} onChange={(e) => {
                 const next = e.target.value as "asaas" | "mercadopago";
                 setPaymentProvider(next);
-                setGatewayToken(data?.[next === "asaas" ? "asaas_access_token" : "mercadopago_access_token"] ?? "");
+                setGatewayToken("");
               }} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                 <option value="asaas">Asaas</option>
                 <option value="mercadopago">Mercado Pago</option>
@@ -225,7 +225,7 @@ function ConfigPage() {
           <div className="space-y-1.5">
             <Label htmlFor="gateway-token">Token do gateway</Label>
             <Input id="gateway-token" type="password" value={gatewayToken} onChange={(e) => setGatewayToken(e.target.value)} placeholder={paymentProvider === "asaas" ? "Access Token do Asaas" : "Access Token do Mercado Pago"} />
-            <p className="text-xs text-muted-foreground">Usado somente no servidor para criar e consultar pagamentos.</p>
+            <p className="text-xs text-muted-foreground">O token nunca é devolvido ao navegador. Deixe em branco para manter o token já configurado.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" onClick={() => void testGateway()} disabled={testingGateway}>
