@@ -798,7 +798,23 @@ export const updatePixStatusServerFn = createServerFn({ method: "POST" })
     const { getPixStatus } = await import("@/server/payments");
     const result = await getPixStatus(order.payment_provider, order.payment_external_id);
     if (result.paid) {
+      const wasConfirmed = order.pix_status === "confirmado";
       db.prepare("UPDATE sales SET pix_status = 'confirmado', pix_confirmed_at = COALESCE(pix_confirmed_at, ?), status = CASE WHEN status IN ('pendente','erro_pagamento') THEN 'pago' ELSE status END WHERE id = ?").run(new Date().toISOString(), data.id);
+
+      if (!wasConfirmed) {
+        const sale = db.prepare("SELECT id, customer_name, total FROM sales WHERE id = ?").get(data.id) as
+          | { id: string; customer_name: string; total: number }
+          | undefined;
+        if (sale) {
+          const { sendAdminPush } = await import("@/server/push");
+          await sendAdminPush({
+            title: "Pagamento confirmado",
+            body: `Pedido ${sale.id} pago por ${sale.customer_name} — R$ ${Number(sale.total).toFixed(2).replace(".", ",")}.`,
+            url: "/admin/historico",
+            tag: `payment-confirmed-${sale.id}`,
+          }).catch((error) => console.error("[matrix] push de pagamento:", error));
+        }
+      }
     }
     return { ok: true, paid: result.paid, status: result.status };
   });
