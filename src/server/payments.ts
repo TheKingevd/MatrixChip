@@ -157,6 +157,9 @@ async function createMercadoPagoCharge(input: {
         description: \`Matrix Online - Pedido \${input.orderId}\`,
         payment_method_id: "pix",
         external_reference: input.orderId,
+        ...(process.env["PUBLIC_APP_URL"] ? {
+          notification_url: `${process.env["PUBLIC_APP_URL"].replace(/\/$/, "")}/api/webhooks/mercadopago`,
+        } : {}),
         payer: {
           email: input.email,
           first_name: firstName,
