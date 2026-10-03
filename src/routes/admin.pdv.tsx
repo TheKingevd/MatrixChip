@@ -48,6 +48,7 @@ function PdvPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [lastCustomerPhone, setLastCustomerPhone] = useState("");
+  const [lastWhatsAppMessage, setLastWhatsAppMessage] = useState("");
   const [ddd, setDdd] = useState("11");
   const [assignedNumber, setAssignedNumber] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -170,7 +171,10 @@ function PdvPage() {
     setBusy(false);
     void qc.invalidateQueries({ queryKey: ["sales"] });
     setMsg({ ok: true, text: `Venda registrada: ${formatBRL(total)}` });
-    if (customerPhone.trim()) setLastCustomerPhone(customerPhone.trim());
+    if (customerPhone.trim()) {
+      setLastCustomerPhone(customerPhone.trim());
+      setLastWhatsAppMessage(buildWhatsAppMessage());
+    }
     setCustomerName("");
     setCustomerPhone("");
     setAssignedNumber("");
@@ -436,7 +440,7 @@ function PdvPage() {
           </Button>
           <Button asChild variant="outline" className="w-full" disabled={!selected || !whatsAppTarget}>
             <a
-              href={whatsAppLink(buildWhatsAppMessage(), whatsAppTarget)}
+              href={whatsAppLink(lastWhatsAppMessage || buildWhatsAppMessage(), whatsAppTarget)}
               target="_blank"
               rel="noopener noreferrer"
             >
