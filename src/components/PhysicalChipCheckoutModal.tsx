@@ -186,6 +186,14 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
       toast.error("Informe um CPF válido para emissão do envio");
       return;
     }
+    if (!customerEmail.trim()) {
+      toast.error("Informe seu e-mail para criar sua conta.");
+      return;
+    }
+    if (accountSecret.length < 8) {
+      toast.error("Crie uma senha com pelo menos 8 caracteres.");
+      return;
+    }
     if (customerPhone.replace(/\D/g, "").length < 10) {
       toast.error("Informe seu WhatsApp para contato e rastreio");
       return;
@@ -210,7 +218,8 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
           customer_cpf: customerCpf.trim(),
-          customer_email: customerEmail.trim() || undefined,
+          customer_email: customerEmail.trim(),
+          account_secret: accountSecret,
           cep: cep.trim(),
           street: street.trim(),
           number: number.trim(),
@@ -340,14 +349,29 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="email" className="text-xs">
-                    E-mail
+                    E-mail *
                   </Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="seuemail@exemplo.com"
+                    required
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="account-secret" className="text-xs">
+                    Senha da sua conta *
+                  </Label>
+                  <Input
+                    id="account-secret"
+                    type="password"
+                    minLength={8}
+                    placeholder="Mínimo 8 caracteres"
+                    required
+                    value={accountSecret}
+                    onChange={(e) => setAccountSecret(e.target.value)}
                   />
                 </div>
               </div>
