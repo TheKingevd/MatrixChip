@@ -878,6 +878,50 @@ export const uploadReceiptServerFn = createServerFn({ method: "POST" })
 // VENDEDORES & COMISSÕES (admin)
 // ==========================================
 
+function sellerFinancials(
+  db: import("node:sqlite").DatabaseSync,
+  sellerId: string,
+) {
+  const sales = db
+    .prepare(
+      `SELECT
+         COUNT(*) AS count,
+         COALESCE(SUM(total), 0) AS revenue,
+         COALESCE(
+           SUM(
+             COALESCE(
+               seller_commission_amount,
+               ROUND(total * COALESCE(seller_commission_percent, 0) / 100.0, 2)
+             )
+           ),
+           0
+         ) AS earned
+       FROM sales
+       WHERE seller_id = ?
+         AND status IN ('pago', 'processando', 'entregue')`,
+    )
+    .get(sellerId) as { count: number; revenue: number; earned: number };
+
+  const paid = db
+    .prepare("SELECT COALESCE(SUM(amount), 0) AS paid FROM seller_payouts WHERE seller_id = ?")
+    .get(sellerId) as { paid: number };
+
+  const earnedCents = Math.round(Number(sales.earned || 0) * 100);
+  const paidCents = Math.round(Number(paid.paid || 0) * 100);
+
+  return {
+    count: Number(sales.count || 0),
+    revenue: Number(sales.revenue || 0),
+    earned: earnedCents / 100,
+    paid: paidCents / 100,
+    balance: Math.max(0, earnedCents - paidCents) / 100,
+  };
+}
+
+// ==========================================
+// VENDEDORES & COMISSÕES (admin)
+// ==========================================
+
 export const getSellersServerFn = createServerFn({ method: "GET" }).handler(async () => {
   const { requireAdmin } = await import("@/server/auth");
   requireAdmin();
@@ -887,10 +931,15 @@ export const getSellersServerFn = createServerFn({ method: "GET" }).handler(asyn
     string,
     unknown
   >[];
-  return rows.map((r) => ({
-    ...r,
-    active: r["active"] === 1,
-  }));
+
+  return rows.map((r) => {
+    const id = String(r["id"]);
+    return {
+      ...r,
+      active: r["active"] === 1,
+      ...sellerFinancials(db, id),
+    };
+  });
 });
 
 export const saveSellerServerFn = createServerFn({ method: "POST" })
@@ -939,6 +988,16 @@ export const deleteSellerServerFn = createServerFn({ method: "POST" })
     requireAdmin();
 
     const { db } = await import("@/server/db");
+    const seller = db.prepare("SELECT id FROM sellers WHERE id = ?").get(data.id);
+    if (!seller) throw new Error("Vendedor não encontrado.");
+
+    const history = db
+      .prepare("SELECT 1 FROM sales WHERE seller_id = ? LIMIT 1")
+      .get(data.id);
+    if (history) {
+      throw new Error("Vendedor com histórico não pode ser excluído. Desative-o para preservar a auditoria.");
+    }
+
     db.prepare("DELETE FROM sellers WHERE id = ?").run(data.id);
     return { ok: true };
   });
@@ -948,48 +1007,88 @@ export const getSellerPayoutsServerFn = createServerFn({ method: "GET" }).handle
   requireAdmin();
 
   const { db } = await import("@/server/db");
-  return db.prepare("SELECT * FROM seller_payouts ORDER BY paid_at DESC").all();
+  return db
+    .prepare(
+      `SELECT p.id, p.seller_id, s.name AS seller_name, p.amount, p.note, p.paid_at, p.created_at,
+              p.created_by
+       FROM seller_payouts p
+       JOIN sellers s ON s.id = p.seller_id
+       ORDER BY p.paid_at DESC, p.created_at DESC`,
+    )
+    .all();
 });
 
 export const createSellerPayoutServerFn = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z
       .object({
-        seller_id: z.string(),
-        amount: z.number().min(0.01),
+        seller_id: z.string().trim().min(1),
+        amount: z.number().finite().min(0.01).max(1_000_000),
         note: z.string().trim().max(200).nullable().optional(),
-        paid_at: z.string().optional(),
       })
       .parse(data),
   )
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("@/server/auth");
-    requireAdmin();
+    const admin = requireAdmin();
 
     const { db } = await import("@/server/db");
-    const id = crypto.randomUUID();
-    const now = new Date().toISOString();
-    const paidAt = data.paid_at || now;
+    const amountCents = Math.round(data.amount * 100);
+    if (amountCents < 1) throw new Error("Informe um valor de saque válido.");
 
-    db.prepare(
-      `
-      INSERT INTO seller_payouts (id, seller_id, amount, note, paid_at, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `,
-    ).run(id, data.seller_id, data.amount, data.note || null, paidAt, now);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const seller = db
+        .prepare("SELECT id, name FROM sellers WHERE id = ?")
+        .get(data.seller_id) as { id: string; name: string } | undefined;
+      if (!seller) throw new Error("Vendedor não encontrado.");
 
-    return { ok: true, id };
+      const financials = sellerFinancials(db, seller.id);
+      const balanceCents = Math.round(financials.balance * 100);
+
+      if (amountCents > balanceCents) {
+        throw new Error(
+          `Saldo disponível para ${seller.name}: R$ ${financials.balance.toFixed(2).replace(".", ",")}.`,
+        );
+      }
+
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      db.prepare(
+        `
+        INSERT INTO seller_payouts (id, seller_id, amount, note, paid_at, created_at, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      ).run(
+        id,
+        seller.id,
+        amountCents / 100,
+        data.note || null,
+        now,
+        now,
+        admin.id,
+      );
+
+      db.exec("COMMIT");
+
+      return {
+        ok: true as const,
+        id,
+        amount: amountCents / 100,
+        balanceAfter: (balanceCents - amountCents) / 100,
+      };
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
   });
 
 export const deleteSellerPayoutServerFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({ id: z.string() }).parse(data))
-  .handler(async ({ data }) => {
+  .handler(async () => {
     const { requireAdmin } = await import("@/server/auth");
     requireAdmin();
-
-    const { db } = await import("@/server/db");
-    db.prepare("DELETE FROM seller_payouts WHERE id = ?").run(data.id);
-    return { ok: true };
+    throw new Error("Repasses de comissão são registros financeiros imutáveis e não podem ser apagados.");
   });
 
 // ==========================================
