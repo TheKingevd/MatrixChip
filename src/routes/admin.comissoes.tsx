@@ -2,13 +2,17 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
-import { saveSellerServerFn, deleteSellerServerFn, getSalesServerFn } from "@/lib/api.functions";
+import { Pencil, Trash2, WalletCards } from "lucide-react";
+import {
+  saveSellerServerFn,
+  deleteSellerServerFn,
+  createSellerPayoutServerFn,
+} from "@/lib/api.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatBRL } from "@/lib/catalog";
-import { useSellers, type Seller } from "@/lib/sellers";
+import { usePayouts, useSellers, type Seller } from "@/lib/sellers";
 
 export const Route = createFileRoute("/admin/comissoes")({
   component: ComissoesPage,
@@ -16,43 +20,47 @@ export const Route = createFileRoute("/admin/comissoes")({
 
 const EMPTY = { name: "", commission_percent: "10", active: true };
 
-type SaleRow = { seller_id: string | null; total: number | string; status: string };
-
-function useSalesBySeller() {
-  return useQuery({
-    queryKey: ["sales", "by-seller"],
-    queryFn: async () => {
-      const rows = await getSalesServerFn();
-      return (rows ?? []) as SaleRow[];
-    },
-    staleTime: 30_000,
-  });
-}
-
 function ComissoesPage() {
   const { data: sellers, isLoading } = useSellers();
-  const { data: sales } = useSalesBySeller();
+  const { data: payouts } = usePayouts();
   const qc = useQueryClient();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY);
+  const [payoutSellerId, setPayoutSellerId] = useState("");
+  const [payoutAmount, setPayoutAmount] = useState("");
+  const [payoutNote, setPayoutNote] = useState("");
   const set = (k: keyof typeof EMPTY, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
-  const stats = useMemo(() => {
-    const map = new Map<string, { count: number; revenue: number }>();
-    let unassigned = { count: 0, revenue: 0 };
-    for (const s of sales ?? []) {
-      if (s.status === "cancelada") continue;
-      const total = Number(s.total) || 0;
-      if (!s.seller_id) {
-        unassigned = { count: unassigned.count + 1, revenue: unassigned.revenue + total };
-        continue;
+  const selectedPayoutSeller = (sellers ?? []).find((s) => s.id === payoutSellerId);
+  const unassigned = useMemo(() => ({ count: 0, revenue: 0 }), []);
+
+  const payout = useMutation({
+    mutationFn: async () => {
+      const amount = Number(payoutAmount.replace(",", "."));
+      if (!payoutSellerId) throw new Error("Selecione o vendedor.");
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Informe um valor de saque válido.");
+      if (selectedPayoutSeller && amount > Number(selectedPayoutSeller.balance) + 0.0001) {
+        throw new Error("O valor não pode ser maior que o saldo disponível.");
       }
-      const cur = map.get(s.seller_id) ?? { count: 0, revenue: 0 };
-      map.set(s.seller_id, { count: cur.count + 1, revenue: cur.revenue + total });
-    }
-    return { map, unassigned };
-  }, [sales]);
+
+      return createSellerPayoutServerFn({
+        data: {
+          seller_id: payoutSellerId,
+          amount,
+          note: payoutNote.trim() || null,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Pagamento de comissão registrado.");
+      setPayoutAmount("");
+      setPayoutNote("");
+      void qc.invalidateQueries({ queryKey: ["sellers"] });
+      void qc.invalidateQueries({ queryKey: ["seller_payouts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -100,10 +108,12 @@ function ComissoesPage() {
     });
   };
 
-  const totalCommission = (sellers ?? []).reduce((acc, s) => {
-    const st = stats.map.get(s.id);
-    return acc + ((st?.revenue ?? 0) * Number(s.commission_percent)) / 100;
-  }, 0);
+  const totalCommission = (sellers ?? []).reduce(
+    (acc, s) => acc + Number(s.earned || 0),
+    0,
+  );
+  const totalPaid = (sellers ?? []).reduce((acc, s) => acc + Number(s.paid || 0), 0);
+  const totalBalance = (sellers ?? []).reduce((acc, s) => acc + Number(s.balance || 0), 0);
 
   return (
     <div>
@@ -199,8 +209,6 @@ function ComissoesPage() {
                 </tr>
               ) : (
                 (sellers ?? []).map((s) => {
-                  const st = stats.map.get(s.id) ?? { count: 0, revenue: 0 };
-                  const commission = (st.revenue * Number(s.commission_percent)) / 100;
                   return (
                     <tr key={s.id} className="border-t border-border/60">
                       <td className="px-3 py-2 font-medium">
@@ -212,10 +220,10 @@ function ComissoesPage() {
                         ) : null}
                       </td>
                       <td className="px-3 py-2">{Number(s.commission_percent)}%</td>
-                      <td className="px-3 py-2">{st.count}</td>
-                      <td className="px-3 py-2">{formatBRL(st.revenue)}</td>
+                      <td className="px-3 py-2">{Number(s.count || 0)}</td>
+                      <td className="px-3 py-2">{formatBRL(Number(s.revenue || 0))}</td>
                       <td className="px-3 py-2 font-semibold text-primary">
-                        {formatBRL(commission)}
+                        {formatBRL(Number(s.balance || 0))}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex justify-end gap-1">
@@ -235,27 +243,140 @@ function ComissoesPage() {
                   );
                 })
               )}
-              {stats.unassigned.count > 0 ? (
-                <tr className="border-t border-border/60 text-muted-foreground">
-                  <td className="px-3 py-2">Sem vendedor</td>
-                  <td className="px-3 py-2">—</td>
-                  <td className="px-3 py-2">{stats.unassigned.count}</td>
-                  <td className="px-3 py-2">{formatBRL(stats.unassigned.revenue)}</td>
-                  <td className="px-3 py-2">—</td>
-                  <td />
-                </tr>
-              ) : null}
+              
             </tbody>
             <tfoot>
               <tr className="border-t border-border/60 font-semibold">
                 <td className="px-3 py-2" colSpan={4}>
-                  Total de comissões
+                  Comissões geradas
                 </td>
                 <td className="px-3 py-2 text-primary">{formatBRL(totalCommission)}</td>
                 <td />
               </tr>
             </tfoot>
           </table>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              payout.mutate();
+            }}
+            className="rounded-2xl border border-border/70 bg-card p-6"
+          >
+            <div className="flex items-center gap-2">
+              <WalletCards className="size-5 text-primary" />
+              <h2 className="font-display text-lg font-semibold">Registrar saque</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Registre somente o valor que você realmente enviou ao vendedor. O servidor bloqueia valores acima do saldo.
+            </p>
+
+            <div className="mt-5 space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="payout-seller">Vendedor</Label>
+                <select
+                  id="payout-seller"
+                  value={payoutSellerId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setPayoutSellerId(id);
+                    const seller = (sellers ?? []).find((item) => item.id === id);
+                    setPayoutAmount(seller && Number(seller.balance) > 0 ? Number(seller.balance).toFixed(2) : "");
+                  }}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {(sellers ?? [])
+                    .filter((s) => Number(s.balance) > 0)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} — saldo {formatBRL(Number(s.balance))}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-secondary/40 p-4 text-sm">
+                <span className="text-muted-foreground">Saldo disponível</span>
+                <strong className="mt-1 block text-xl text-primary">
+                  {formatBRL(Number(selectedPayoutSeller?.balance || 0))}
+                </strong>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="payout-amount">Valor enviado (R$)</Label>
+                <Input
+                  id="payout-amount"
+                  type="number"
+                  min="0.01"
+                  max={selectedPayoutSeller ? Number(selectedPayoutSeller.balance) : undefined}
+                  step="0.01"
+                  value={payoutAmount}
+                  onChange={(e) => setPayoutAmount(e.target.value)}
+                  placeholder="0,00"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="payout-note">Observação</Label>
+                <Input
+                  id="payout-note"
+                  maxLength={200}
+                  value={payoutNote}
+                  onChange={(e) => setPayoutNote(e.target.value)}
+                  placeholder="Ex.: PIX enviado em 03/10"
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={payout.isPending || !payoutSellerId}>
+                {payout.isPending ? "Registrando..." : "Confirmar pagamento"}
+              </Button>
+            </div>
+          </form>
+
+          <div className="rounded-2xl border border-border/70 bg-card p-5 overflow-x-auto">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-semibold">Histórico de pagamentos</h2>
+                <p className="text-xs text-muted-foreground">
+                  Registros são permanentes para manter a auditoria financeira.
+                </p>
+              </div>
+              <div className="text-right text-xs">
+                <div>Já pagos: <strong>{formatBRL(totalPaid)}</strong></div>
+                <div>Em aberto: <strong className="text-primary">{formatBRL(totalBalance)}</strong></div>
+              </div>
+            </div>
+            <table className="mt-4 w-full min-w-[620px] text-sm">
+              <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">Vendedor</th>
+                  <th className="px-3 py-2">Valor</th>
+                  <th className="px-3 py-2">Data</th>
+                  <th className="px-3 py-2">Observação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(payouts ?? []).map((p) => (
+                  <tr key={p.id} className="border-t border-border/60">
+                    <td className="px-3 py-2 font-medium">{(p as SellerPayoutWithName).seller_name}</td>
+                    <td className="px-3 py-2 font-semibold text-primary">{formatBRL(Number(p.amount))}</td>
+                    <td className="px-3 py-2">{new Date(p.paid_at).toLocaleString("pt-BR")}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{p.note || "—"}</td>
+                  </tr>
+                ))}
+                {(payouts ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">
+                      Nenhum pagamento registrado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
