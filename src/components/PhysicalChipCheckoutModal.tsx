@@ -70,7 +70,7 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; percent: number } | null>(null);
 
   // Pedido criado
-  const [orderResult, setOrderResult] = useState<{ orderId: string; total: number } | null>(null);
+  const [orderResult, setOrderResult] = useState<{ orderId: string; total: number; payment: { provider: "asaas" | "mercadopago"; qrCode: string; qrCodeDataUrl: string; ticketUrl?: string | null; expiresAt?: string | null } } | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -231,7 +231,7 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
       });
 
       if (res.ok) {
-        setOrderResult({ orderId: res.orderId, total: res.total });
+        setOrderResult({ orderId: res.orderId, total: res.total, payment: res.payment });
         setStep("pix");
         toast.success("Pedido registrado com sucesso!");
       }
