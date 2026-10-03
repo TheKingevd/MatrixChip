@@ -44,19 +44,9 @@ function ConfigPage() {
   const [note, setNote] = useState("");
   const [tickerOn, setTickerOn] = useState(true);
   const [tickerSecs, setTickerSecs] = useState("15");
-  const [pixKey, setPixKey] = useState("");
-  const [pixKeyType, setPixKeyType] = useState("");
-  const [pixHolder, setPixHolder] = useState("");
-  const [pixBank, setPixBank] = useState("");
-  const [payLink, setPayLink] = useState("");
-  const [pixToLink, setPixToLink] = useState("");
   const [paymentProvider, setPaymentProvider] = useState<"asaas" | "mercadopago">("asaas");
-  const [asaasToken, setAsaasToken] = useState("");
-  const [asaasApiUrl, setAsaasApiUrl] = useState("https://api.asaas.com");
-  const [asaasWebhookToken, setAsaasWebhookToken] = useState("");
-  const [mercadoPagoToken, setMercadoPagoToken] = useState("");
-  const [mercadoPagoWebhookSecret, setMercadoPagoWebhookSecret] = useState("");
-  const [publicAppUrl, setPublicAppUrl] = useState("");
+  const [gatewayToken, setGatewayToken] = useState("");
+  const [paymentMinimum, setPaymentMinimum] = useState("1");
   const [testingGateway, setTestingGateway] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,19 +58,9 @@ function ConfigPage() {
     setNote(data["hero_note"] ?? "");
     setTickerOn((data["ticker_enabled"] ?? "on") !== "off");
     setTickerSecs(data["ticker_interval"] ?? "15");
-    setPixKey(data["pix_key"] ?? "");
-    setPixKeyType(data["pix_key_type"] ?? "");
-    setPixHolder(data["pix_holder"] ?? "");
-    setPixBank(data["pix_bank"] ?? "");
-    setPayLink(data["payment_link"] ?? "");
-    setPixToLink(data["pixto_link"] ?? "");
     setPaymentProvider((data["payment_provider"] === "mercadopago" ? "mercadopago" : "asaas"));
-    setAsaasToken(data["asaas_access_token"] ?? "");
-    setAsaasApiUrl(data["asaas_api_url"] ?? "https://api.asaas.com");
-    setAsaasWebhookToken(data["asaas_webhook_token"] ?? "");
-    setMercadoPagoToken(data["mercadopago_access_token"] ?? "");
-    setMercadoPagoWebhookSecret(data["mercadopago_webhook_secret"] ?? "");
-    setPublicAppUrl(data["public_app_url"] ?? "");
+    setGatewayToken(data[data["payment_provider"] === "mercadopago" ? "mercadopago_access_token" : "asaas_access_token"] ?? "");
+    setPaymentMinimum(data["payment_minimum"] ?? "1");
   }, [data]);
 
   const testGateway = async () => {
@@ -100,30 +80,16 @@ function ConfigPage() {
     setMsg(null);
     const parsed = schema.extend({
     payment_provider: z.enum(["asaas", "mercadopago"]),
-    asaas_access_token: z.string().max(500),
-    asaas_api_url: z.string().max(300),
-    asaas_webhook_token: z.string().max(500),
-    mercadopago_access_token: z.string().max(500),
-    mercadopago_webhook_secret: z.string().max(500),
-    public_app_url: z.string().max(300),
+    gateway_token: z.string().trim().min(1).max(1000),
+    payment_minimum: z.number().min(0.01).max(1000000),
   }).safeParse({
       support_phone: phone,
       brand_name: brand,
       hero_note: note,
       ticker_interval: Number(tickerSecs),
-      pix_key: pixKey,
-      pix_key_type: pixKeyType,
-      pix_holder: pixHolder,
-      pix_bank: pixBank,
-      payment_link: payLink,
-      pixto_link: pixToLink,
       payment_provider: paymentProvider,
-      asaas_access_token: asaasToken,
-      asaas_api_url: asaasApiUrl,
-      asaas_webhook_token: asaasWebhookToken,
-      mercadopago_access_token: mercadoPagoToken,
-      mercadopago_webhook_secret: mercadoPagoWebhookSecret,
-      public_app_url: publicAppUrl,
+      gateway_token: gatewayToken,
+      payment_minimum: Number(paymentMinimum),
     });
     if (!parsed.success) {
       setMsg({ ok: false, text: parsed.error.issues[0]!.message });
@@ -136,19 +102,9 @@ function ConfigPage() {
       { key: "hero_note", value: parsed.data.hero_note },
       { key: "ticker_enabled", value: tickerOn ? "on" : "off" },
       { key: "ticker_interval", value: String(parsed.data.ticker_interval) },
-      { key: "pix_key", value: parsed.data.pix_key },
-      { key: "pix_key_type", value: parsed.data.pix_key_type },
-      { key: "pix_holder", value: parsed.data.pix_holder },
-      { key: "pix_bank", value: parsed.data.pix_bank },
-      { key: "payment_link", value: parsed.data.payment_link },
-      { key: "pixto_link", value: parsed.data.pixto_link },
       { key: "payment_provider", value: parsed.data.payment_provider },
-      { key: "asaas_access_token", value: parsed.data.asaas_access_token },
-      { key: "asaas_api_url", value: parsed.data.asaas_api_url },
-      { key: "asaas_webhook_token", value: parsed.data.asaas_webhook_token },
-      { key: "mercadopago_access_token", value: parsed.data.mercadopago_access_token },
-      { key: "mercadopago_webhook_secret", value: parsed.data.mercadopago_webhook_secret },
-      { key: "public_app_url", value: parsed.data.public_app_url },
+      { key: parsed.data.payment_provider === "asaas" ? "asaas_access_token" : "mercadopago_access_token", value: parsed.data.gateway_token },
+      { key: "payment_minimum", value: String(parsed.data.payment_minimum) },
     ];
     try {
       await updateSettingsServerFn({ data: rows });
@@ -252,37 +208,24 @@ function ConfigPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="payment-provider">Gateway ativo</Label>
-              <select id="payment-provider" value={paymentProvider} onChange={(e) => setPaymentProvider(e.target.value as "asaas" | "mercadopago")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <select id="payment-provider" value={paymentProvider} onChange={(e) => {
+                const next = e.target.value as "asaas" | "mercadopago";
+                setPaymentProvider(next);
+                setGatewayToken(data?.[next === "asaas" ? "asaas_access_token" : "mercadopago_access_token"] ?? "");
+              }} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                 <option value="asaas">Asaas</option>
                 <option value="mercadopago">Mercado Pago</option>
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="public-url">URL pública do site</Label>
-              <Input id="public-url" value={publicAppUrl} onChange={(e) => setPublicAppUrl(e.target.value)} placeholder="https://seudominio.com.br" />
+              <Label htmlFor="payment-minimum">Valor mínimo</Label>
+              <Input id="payment-minimum" type="number" min="0.01" step="0.01" value={paymentMinimum} onChange={(e) => setPaymentMinimum(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="asaas-token">Token Asaas</Label>
-            <Input id="asaas-token" type="password" value={asaasToken} onChange={(e) => setAsaasToken(e.target.value)} placeholder="Cole o access token do Asaas" />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="asaas-url">URL da API Asaas</Label>
-              <Input id="asaas-url" value={asaasApiUrl} onChange={(e) => setAsaasApiUrl(e.target.value)} placeholder="https://api.asaas.com" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="asaas-webhook">Token do webhook Asaas</Label>
-              <Input id="asaas-webhook" type="password" value={asaasWebhookToken} onChange={(e) => setAsaasWebhookToken(e.target.value)} placeholder="Token configurado no webhook" />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="mp-token">Access Token Mercado Pago</Label>
-            <Input id="mp-token" type="password" value={mercadoPagoToken} onChange={(e) => setMercadoPagoToken(e.target.value)} placeholder="Cole o access token do Mercado Pago" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="mp-webhook">Secret do webhook Mercado Pago</Label>
-            <Input id="mp-webhook" type="password" value={mercadoPagoWebhookSecret} onChange={(e) => setMercadoPagoWebhookSecret(e.target.value)} placeholder="Webhook secret / assinatura" />
+            <Label htmlFor="gateway-token">Token do gateway</Label>
+            <Input id="gateway-token" type="password" value={gatewayToken} onChange={(e) => setGatewayToken(e.target.value)} placeholder={paymentProvider === "asaas" ? "Access Token do Asaas" : "Access Token do Mercado Pago"} />
+            <p className="text-xs text-muted-foreground">Usado somente no servidor para criar e consultar pagamentos.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" onClick={() => void testGateway()} disabled={testingGateway}>
@@ -292,89 +235,6 @@ function ConfigPage() {
           </div>
         </div>
 
-        <div className="space-y-3 rounded-xl border border-border/70 bg-background/40 p-4">
-          <div>
-            <Label htmlFor="pix-key">Pagamento via PIX</Label>
-            <p className="text-xs text-muted-foreground">
-              Informe a chave manualmente. Ela aparece no site para o cliente copiar.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pix-key">Chave PIX</Label>
-            <Input
-              id="pix-key"
-              value={pixKey}
-              maxLength={120}
-              onChange={(e) => setPixKey(e.target.value)}
-              placeholder="e-mail, CPF/CNPJ, telefone ou chave aleatória"
-              disabled={isLoading}
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="pix-type">Tipo da chave</Label>
-              <Input
-                id="pix-type"
-                value={pixKeyType}
-                maxLength={30}
-                onChange={(e) => setPixKeyType(e.target.value)}
-                placeholder="CPF, e-mail, telefone..."
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pix-holder">Nome do titular</Label>
-              <Input
-                id="pix-holder"
-                value={pixHolder}
-                maxLength={80}
-                onChange={(e) => setPixHolder(e.target.value)}
-                placeholder="Nome que aparece no comprovante"
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pix-bank">Banco / instituição</Label>
-            <Input
-              id="pix-bank"
-              value={pixBank}
-              maxLength={60}
-              onChange={(e) => setPixBank(e.target.value)}
-              placeholder="Ex.: Nubank"
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pay-link">Link de pagamento (opcional)</Label>
-            <Input
-              id="pay-link"
-              value={payLink}
-              maxLength={300}
-              onChange={(e) => setPayLink(e.target.value)}
-              placeholder="https://..."
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              Anexado à mensagem de WhatsApp montada no PDV, junto com a chave PIX.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pixto-link">Link de cobrança Pix.to (opcional)</Label>
-            <Input
-              id="pixto-link"
-              value={pixToLink}
-              maxLength={300}
-              onChange={(e) => setPixToLink(e.target.value)}
-              placeholder="https://pix.to/sua-cobranca"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              Quando preenchido, o site mostra o botão "Pagar agora com Pix.to". Depois que o
-              cliente pagar, envie ou anexe o comprovante em Envios PIX para confirmar.
-            </p>
-          </div>
-        </div>
         {msg && (
           <p className={msg.ok ? "text-sm text-primary" : "text-sm text-destructive"}>{msg.text}</p>
         )}
