@@ -138,6 +138,8 @@ db.exec(`
 
 // Configurações antigas de PIX manual não fazem mais parte do sistema.
 db.prepare("DELETE FROM app_settings WHERE key IN ('pix_key','pix_key_type','pix_holder','pix_bank','payment_link','pixto_link','public_app_url')").run();
+db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES ('payment_provider', 'asaas', ?)").run(new Date().toISOString());
+db.prepare("INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES ('payment_minimum', '1', ?)").run(new Date().toISOString());
 
 
 /**
