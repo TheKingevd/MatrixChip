@@ -87,13 +87,13 @@ function CustomerAccount() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 border-b border-border/60 bg-card/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center gap-2.5">
             <span className="grid size-9 place-items-center rounded-xl bg-brand-gradient text-primary-foreground shadow-glow">
               <Zap className="size-5 fill-current" />
             </span>
             <div>
-              <p className="font-display text-lg font-bold">Matrix Online</p>
+              <p className="font-display text-base font-bold sm:text-lg">Matrix Online</p>
               <p className="text-[10px] uppercase tracking-wider text-primary">Minha conta</p>
             </div>
           </div>
@@ -106,9 +106,9 @@ function CustomerAccount() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-8 px-5 py-8">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-5 sm:py-8">
         <div>
-          <h1 className="font-display text-3xl font-bold">Olá, {user.name.split(" ")[0]} 👋</h1>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">Olá, {user.name.split(" ")[0]} 👋</h1>
           <p className="mt-1 text-sm text-muted-foreground">Aqui você acompanha seus chips, pagamentos e entrega.</p>
         </div>
 
@@ -125,7 +125,7 @@ function CustomerAccount() {
             {orders.map((order: any) => {
               const paid = order.pix_status === "confirmado";
               return (
-                <article key={order.id} className="rounded-2xl border border-border/70 bg-card p-5 shadow-card">
+                <article key={order.id} className="rounded-2xl border border-border/70 bg-card p-4 shadow-card sm:p-5">
                   <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                     <div>
                       <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ function CustomerAccount() {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-4 border-t border-border/60 pt-5 md:grid-cols-3">
+                  <div className="mt-5 grid gap-4 border-t border-border/60 pt-5 sm:grid-cols-2 md:grid-cols-3">
                     <div>
                       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Seu chip</p>
                       <p className="mt-1 font-semibold">Chip Físico {order.country_name}</p>
@@ -164,7 +164,7 @@ function CustomerAccount() {
                   {!paid && order.pix_payload && (
                     <div className="mt-5 rounded-xl border border-primary/20 bg-primary/5 p-4">
                       <p className="text-xs font-semibold text-primary">PIX Copia e Cola</p>
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                         <Input value={order.pix_payload} readOnly className="font-mono text-xs" />
                         <Button size="sm" variant="outline" onClick={async () => {
                           await navigator.clipboard.writeText(order.pix_payload);
