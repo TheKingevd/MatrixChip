@@ -4,6 +4,7 @@ import {
   Check,
   Globe2,
   MapPin,
+  MessageCircle,
   Package,
   Search,
   ShieldCheck,
