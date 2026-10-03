@@ -808,10 +808,15 @@ export const updateSaleStatusServerFn = createServerFn({ method: "POST" })
     if (data.status !== undefined) {
       const current = db
         .prepare(
-          "SELECT seller_id, status, pix_status FROM sales WHERE id = ?",
+          "SELECT seller_id, status, pix_status, payment_method FROM sales WHERE id = ?",
         )
         .get(data.id) as
-        | { seller_id: string | null; status: string; pix_status: string }
+        | {
+            seller_id: string | null;
+            status: string;
+            pix_status: string;
+            payment_method: string;
+          }
         | undefined;
 
       if (!current) throw new Error("Venda não encontrada.");
@@ -827,6 +832,17 @@ export const updateSaleStatusServerFn = createServerFn({ method: "POST" })
       const commissionableStatuses = new Set(["pago", "processando", "entregue"]);
       const currentIsCommissionable = commissionableStatuses.has(current.status);
       const nextIsCommissionable = commissionableStatuses.has(data.status);
+
+      if (
+        !currentIsCommissionable &&
+        nextIsCommissionable &&
+        current.payment_method === "pix" &&
+        current.pix_status !== "confirmado"
+      ) {
+        throw new Error(
+          "A venda PIX só entra na comissão depois da confirmação do pagamento.",
+        );
+      }
 
       if (current.seller_id && currentIsCommissionable && !nextIsCommissionable) {
         // Não dependemos de valores enviados pelo navegador. Se a mudança
