@@ -58,8 +58,6 @@ export const Route = createFileRoute("/api/webhooks/mercadopago")({
         if (!response.ok) return Response.json({ error: "gateway lookup failed" }, { status: 502 });
 
         const payment = (await response.json()) as { status?: string };
-        const { db } = await import("@/server/db");
-
         if (payment.status === "approved") {
           db.prepare(
             "UPDATE sales SET pix_status = 'confirmado', pix_confirmed_at = COALESCE(pix_confirmed_at, ?), status = CASE WHEN status = 'pendente' THEN 'pago' ELSE status END WHERE payment_provider = 'mercadopago' AND payment_external_id = ?",
