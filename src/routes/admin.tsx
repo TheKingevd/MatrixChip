@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { LogOut, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { PushNotificationsButton } from "@/components/PushNotificationsButton";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -74,7 +75,8 @@ function AdminLayout() {
               <span className="text-[10px] text-primary uppercase font-mono">Gestão de Chips Físicos</span>
             </div>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <PushNotificationsButton />
             <span className="hidden text-xs text-muted-foreground sm:inline font-mono">
               {user?.email}
             </span>
