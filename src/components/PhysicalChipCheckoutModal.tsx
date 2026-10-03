@@ -516,25 +516,59 @@ export function PhysicalChipCheckoutModal({ open, onOpenChange, item }: Props) {
               </p>
             </div>
 
-            {/* Box Chave PIX */}
-            <div className="rounded-xl border border-border/80 bg-background/60 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Chave PIX Oficial ({pix.keyType})
-                  </span>
-                  <p className="mt-0.5 font-mono text-base font-bold text-foreground break-all">
-                    {pix.key}
+            {/* QR PIX REAL GERADO PELO GATEWAY */}
+            <div className="rounded-xl border border-primary/30 bg-background/60 p-5">
+              <div className="flex flex-col items-center gap-4">
+                <div className="rounded-2xl bg-white p-3 shadow-xl">
+                  <img
+                    src={orderResult.payment.qrCodeDataUrl}
+                    alt="QR Code PIX do pedido"
+                    className="size-56 sm:size-64"
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                    PIX gerado automaticamente
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {pix.holder} · {pix.bank}
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {orderResult.payment.provider === "asaas" ? "Asaas" : "Mercado Pago"} · Escaneie com o aplicativo do seu banco.
                   </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={copyPix} className="shrink-0">
-                  {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
-                  {copied ? "Copiada" : "Copiar"}
-                </Button>
               </div>
+              <div className="mt-5">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                  PIX Copia e Cola
+                </span>
+                <div className="mt-2 flex gap-2">
+                  <Input value={orderResult.payment.qrCode} readOnly className="font-mono text-xs" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(orderResult.payment.qrCode);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2500);
+                      toast.success("PIX Copia e Cola copiado!");
+                    }}
+                  >
+                    {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
+                    <span className="sr-only sm:not-sr-only sm:ml-1">Copiar</span>
+                  </Button>
+                </div>
+              </div>
+              {orderResult.payment.ticketUrl && (
+                <Button variant="outline" className="mt-3 w-full" asChild>
+                  <a href={orderResult.payment.ticketUrl} target="_blank" rel="noreferrer">
+                    Abrir pagamento
+                  </a>
+                </Button>
+              )}
+              {orderResult.payment.expiresAt && (
+                <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                  QR Code válido até {new Date(orderResult.payment.expiresAt).toLocaleString("pt-BR")}
+                </p>
+              )}
             </div>
 
             {/* Informações de entrega */}
